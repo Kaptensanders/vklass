@@ -28,11 +28,7 @@ from .const import (
     VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
 )
-from .login import (
-    authenticate_bankid_qr,
-    authenticate_bankid_peronno,
-    authenticate_userpass
-)
+from .login import authenticate
 
 '''
 config = {
@@ -279,21 +275,19 @@ class VklassSession(ObjBase):
         if not force and self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME):
             return
 
-        method = self._config.get(VKLASS_CONFKEY_AUTH_METHOD)
-        if method == VKLASS_AUTH_BANKID_QR:
-            await authenticate_bankid_qr(
-                aiohttp_session=self._aiohttp_session, 
-                authUrl=self._config.get(VKLASS_CONFKEY_AUTH_URL), 
-                qrCallback=self._config.get(VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE)    )
-        elif method == VKLASS_AUTH_BANKID_PERSONALNO:
-            await authenticate_bankid_peronno()
-        elif method == VKLASS_AUTH_USERNAME_PASSWORD:
-            await authenticate_userpass()
-        else:
-            raise ValueError(f"Invalid authentication method: {method}")
+        auth = await authenticate(self._aiohttp_session, self._config)
+        if not auth:
+            await self._setAuthFail()
+            raise RuntimeError("Vklass authentication failed")
+
+        # _aiohttp_session cookie jar should now be updated with the new auth cookie, trigger the async callback
+        cb = self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE, None)
+        if cb:
+            cookie = self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME)
+            if cookie:
+                await cb(cookie.value)
 
         return True
-
 
     async def _keepAliveLoop(self, loopLen:int):
         interval_seconds = int(loopLen) * 60
@@ -365,6 +359,9 @@ class VklassSession(ObjBase):
         self._students = students
         if self.DEBUG:
             log.info(f"Students found:\n{json.dumps(self._students, indent=4, ensure_ascii=False)}")
+
+        if not students:
+            raise RuntimeError("No students found, cannot proceed")
 
 
     async def getStudents(self, name=None) -> dict | str:

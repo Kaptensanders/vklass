@@ -38,9 +38,6 @@ async def authenticate(aiohttp_session, config) -> bool:
     :param qr_callback: async function(qr_string)
     :return: True if success, False otherwise
     """
-
-    log.info(f"Starting BankID QR authentication flow with URL: {_AUTH_URL}")
-
     authData = {}
 
     await _step0_extract_saml_url(aiohttp_session, _AUTH_URL, authData)
@@ -263,7 +260,6 @@ async def _step3_poll_qr(session, auth, qr_callback):
     poll_count = 0
     fail_count = 0
     previous_status = None
-    log.info("Starting BankID auth polling loop")
     while True:
 
         await asyncio.sleep(1)
@@ -298,13 +294,12 @@ async def _step3_poll_qr(session, auth, qr_callback):
         message = data.get("message")
         substatus = data.get("substatus")
 
-
-        if status != previous_status:
-            log.info (f"Vklass BankID authentication -> {status} (hintCode: {hint_code}, message: {message}, substatus: {substatus})")
-
         if status != "pending":
             log.info (f"BankID auth completed with status={status}, hintCode={hint_code}, message={message}, substatus={substatus}")
             return
+
+        if status != previous_status:
+            log.info ("Awaiting BankID app authentication... ")
 
         # get QR
         async with session.get(qr_url, params={"aid": aid}, headers=_HEADERS) as resp:

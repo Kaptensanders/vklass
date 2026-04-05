@@ -18,6 +18,7 @@ Status: **In Progress**
 * Basic logic and structure of the gateway component in `custom_components/vklass/vklassgateway.py`
 * Real authentication entry point in `VklassSession`
 * BankID QR flow foundation in `custom_components/vklass/login.py`
+* BankID QR implementation for gothenburg
 * Shared authenticated `aiohttp` session handling
 * Dynamic auth-cookie updates from Vklass responses
 * Robust Vklass content fetching in `VklassSession` with fail-fast auth and error handling
@@ -25,10 +26,9 @@ Status: **In Progress**
 * Student discovery and keepalive loop
 
 ### 3. The VklassGateway component - completion and refinement
-Status: **Pending**
-* Complete the real BankID QR implementation
-* Implement BankID personal-number authentication
-* Implement username/password authentication
+Status: **Pending**  
+* Implement vklass BankID personal-number authentication (vklass_bankid.py)
+* Implement vklass username/password authentication (vklass_userpass.py)
 * Complete auth result propagation through callbacks for QR update and auth-failed state
 * Convert raw Vklass calendar entries into conventional calendar entry format
 * Validate district-specific auth URL handling and redirect behavior

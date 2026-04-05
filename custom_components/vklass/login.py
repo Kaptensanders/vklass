@@ -1,10 +1,14 @@
 import importlib
 import pkgutil
+from logging import getLogger
+
 
 from .const import (
     VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
     VKLASS_CONFKEY_AUTH_URL,
 )
+
+log = getLogger(__name__)
 
 def _load_auth_adapters():
     adapters = []
@@ -35,25 +39,8 @@ async def authenticate(aiohttp_session, config):
 
     for adapter in _ADAPTERS:
         if adapter["can_handle"](url):
+            log.info(f"Initializing Vklass authentication using adapter: {adapter['name']}")
             return await adapter["authenticate"](aiohttp_session, config)
 
     raise RuntimeError(f"No auth adapter found for {url}")
-
-
-async def authenticate_bankid_qr(aiohttp_session, authUrl, qrCallback=None):
-    return await authenticate(
-        aiohttp_session,
-        {
-            VKLASS_CONFKEY_AUTH_URL: authUrl,
-            VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE: qrCallback,
-        },
-    )
-
-
-async def authenticate_bankid_peronno(*_args, **_kwargs):
-    raise NotImplementedError("BankID personal number login not implemented")
-
-
-async def authenticate_userpass(*_args, **_kwargs):
-    raise NotImplementedError("Username/password login not implemented")
 
