@@ -43,6 +43,7 @@ _VKLASS_URL_BASE        = "https://custodian.vklass.se"
 _EP_LOGIN               = "login"
 _EP_LOGIN_AUTH          = "login_auth"
 _EP_VKLASS_HOME         = "home"
+_EP_VKLASS_CLASSLIST    = "classlist"
 _EP_VKLASS_CALENDAR     = "calendar"
 
 _ENDPOINTS = {
@@ -60,6 +61,12 @@ _ENDPOINTS = {
     },
     _EP_VKLASS_HOME : {
         _EPKEY_URL              : "/Home/Welcome",  
+        _EPKEY_SUCCCESS_CODE    : 200,
+        _EPKEY_CONTENTTYPE      : _EPTYPE_HTML,
+        _EPKEY_ALLOWREDIRECTS   : False
+    },
+    _EP_VKLASS_CLASSLIST : {
+        _EPKEY_URL              : "/ClassList/Index",  
         _EPKEY_SUCCCESS_CODE    : 200,
         _EPKEY_CONTENTTYPE      : _EPTYPE_HTML,
         _EPKEY_ALLOWREDIRECTS   : False
@@ -350,23 +357,32 @@ class VklassSession(ObjBase):
 
     async def _mapStudents (self):
 
-        html = await self._fetch (_EP_VKLASS_HOME)
+        html = await self._fetch (_EP_VKLASS_CLASSLIST)
         soup = BeautifulSoup(html, "html.parser")
         students = {}
 
-        for card in soup.select(".vk-student-card"):
-            name_el = card.select_one(".vk-student-card-header__text")
-            link_el = card.select_one('a[href*="studentIds="]')
+        select_el = soup.select_one("#SelectedClassIdAndStudentId")
+        if select_el is None:
+            self._students = {}
+            if self.DEBUG:
+                log.info("Students found:\n{}")
+            return
 
-            if not name_el or not link_el:
+        for option_el in select_el.select("option"):
+            value = option_el.get("value", "").strip()
+            if not value:
                 continue
 
-            name = name_el.get_text(strip=True)
+            match = re.fullmatch(r"\d+:(\d+)", value)
+            if not match:
+                continue
 
-            match = re.search(r"studentIds=(\d+)", link_el["href"])
-            if match:
-                student_id = match.group(1)
-                students[student_id] = name
+            name = option_el.get_text(strip=True)
+            if not name:
+                continue
+
+            student_id = match.group(1)
+            students.setdefault(student_id, name)
 
         self._students = students
         if self.DEBUG:

@@ -1,0 +1,790 @@
+
+
+
+
+<!DOCTYPE html><html data-vk-no-chrome="true">	<head>
+	
+
+<title>Vklass</title>
+<meta charset="utf-8" />
+<meta name="referrer" content="strict-origin">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+
+
+
+
+<!-- Fundamental Styles -->
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:300,400,400i,500,500i,700">
+<link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+
+<link href="/dist/site.css?v=8VrGPQbtjplkESDhIkqBU2EANciWWnXywUErQl9RZrI" rel="stylesheet" />
+<!-- /Fundamental Styles -->
+
+
+
+<!-- App Styles -->
+<link href="/dist/_static/font-awesome/all.css?v=9Ny5j6VjJMSQuZtHsucy5aIojO_DhhIT1n0nMj4EELg" rel="stylesheet">
+
+
+<!-- /APP Styles -->
+
+
+<script>
+	document.createElement('template'); //JS template polyfill for IE11 support
+</script>
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js" integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8&#x2B;M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==" crossorigin="anonymous"></script>
+<script>(window.moment||document.write("\u003Cscript src=\u0022/dist/moment/moment.min.js?v=80OqMZoXo_w3LuatWvSCub9qKYyyJlK0qnUCYEghBx8\u0022 integrity=\u0022sha512-qTXRIMyZIFb8iQcfjXWCO8\u0026#x2B;M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/locale/sv.js" integrity="sha512-RAEJlAvLnyFlgMRNadtCspAsnmiSnFDVMvKqIIlY7fgU&#x2B;8&#x2B;AymtDml1CrIHsw9aLm//G8G8MQn59wdsJYjVE1Q==" crossorigin="anonymous"></script>
+<script>(window.moment.locales().indexOf('sv') > -1||document.write("\u003Cscript src=\u0022/dist/moment/sv.js?v=CPjbupcLiVIq2qvmCfR6PyCFfAmFlniIEk-SBPTD4vA\u0022 integrity=\u0022sha512-RAEJlAvLnyFlgMRNadtCspAsnmiSnFDVMvKqIIlY7fgU\u0026#x2B;8\u0026#x2B;AymtDml1CrIHsw9aLm//G8G8MQn59wdsJYjVE1Q==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.1/underscore-min.js" integrity="sha512-ZuOjyqq409&#x2B;q6uc49UiBF3fTeyRyP8Qs0Jf/7FxH5LfhqBMzrR5cwbpDA4BgzSo884w6q/&#x2B;oNdIeHenOqhISGw==" crossorigin="anonymous"></script>
+<script>(window._||document.write("\u003Cscript src=\u0022/dist/underscore/underscore-min.js?v=IY-xwfxy6a9rhm9DC-Kmf6N2OStNsvTb8ydyZxtq5Vw\u0022 integrity=\u0022sha512-ZuOjyqq409\u0026#x2B;q6uc49UiBF3fTeyRyP8Qs0Jf/7FxH5LfhqBMzrR5cwbpDA4BgzSo884w6q/\u0026#x2B;oNdIeHenOqhISGw==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js" integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==" crossorigin="anonymous"></script>
+<script>(window.Chart||document.write("\u003Cscript src=\u0022/dist/chart/Chart.min.js?v=t9UJPrESBeG2ojKTIcFLPGF7nHi2vEc7f5A2KpH_UBU\u0022 integrity=\u0022sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@1.0.0" integrity="sha512-XulchVN83YTvsOaBGjLeApZuasKd8F4ZZ28/aMHevKjzrrjG0lor&#x2B;T4VU248fWYMNki3Eimk&#x2B;uwdlQS&#x2B;uZmu8g==" crossorigin="anonymous"></script>
+<script>(window.ChartDataLabels||document.write("\u003Cscript src=\u0022/dist/chartjs-plugin-datalabels/chartjs-plugin-datalabels.min.js?v=1MLesEqdUN0AVyoh-gIVtx4YNSMccpxrLU3wESgfDq4\u0022 integrity=\u0022sha512-XulchVN83YTvsOaBGjLeApZuasKd8F4ZZ28/aMHevKjzrrjG0lor\u0026#x2B;T4VU248fWYMNki3Eimk\u0026#x2B;uwdlQS\u0026#x2B;uZmu8g==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR&#x2B;8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous"></script>
+<script>(window.jQuery||document.write("\u003Cscript src=\u0022/dist/jquery/jquery.min.js?v=_JqT3SQfawRcv_BIHPThkBvs0OEvtFFmqPF_lYI_Cxo\u0022 integrity=\u0022sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR\u0026#x2B;8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="/dist/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js?v=PAC000yuHt78nszJ2RO0OiDMu_uLzPLRlYTk8J3AO10"></script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/froala_editor.min.js" integrity="sha512-b23IpcAG1wCIJLKB/HJ2gVHflJ4PXOHhAfA8Mjv9K9cTz0ndRNH8TGhuJnYUiOO/D&#x2B;AVY0n&#x2B;&#x2B;cmjrwiOXPBPaQ==" crossorigin="anonymous"></script>
+<script>(window.FroalaEditor||document.write("\u003Cscript src=\u0022/dist/froala-editor/froala_editor.min.js?v=rsSGZQgP7tJo6Azl1bgi1_KYbBnx-RurPOe0W90VoSU\u0022 integrity=\u0022sha512-b23IpcAG1wCIJLKB/HJ2gVHflJ4PXOHhAfA8Mjv9K9cTz0ndRNH8TGhuJnYUiOO/D\u0026#x2B;AVY0n\u0026#x2B;\u0026#x2B;cmjrwiOXPBPaQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/languages/sv.js" integrity="sha512-6XTFt1/4wnABWltgqoSeJMNiPOxK/rN4OR&#x2B;zIO8ALINT9cK&#x2B;rRpQJQSolCnz37MMTXkSViTAv5TQuYxAiehpBQ==" crossorigin="anonymous"></script>
+<script>(window.FroalaEditor.LANGUAGE.sv||document.write("\u003Cscript src=\u0022/dist/froala-editor/sv.js?v=mHNrMtfqcTzy2HTG7JXLOGMAgHlmWZJg4LvfyMGqzA0\u0022 integrity=\u0022sha512-6XTFt1/4wnABWltgqoSeJMNiPOxK/rN4OR\u0026#x2B;zIO8ALINT9cK\u0026#x2B;rRpQJQSolCnz37MMTXkSViTAv5TQuYxAiehpBQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/align.min.js" data-vk-froala-editor-plugin="align"></script>
+<script>(window.FroalaEditor.PLUGINS.align||document.write("\u003Cscript src=\u0022/dist/froala-editor/align.min.js?v=E31P5HXf2l66aMR2PuOqrF1h9l53nDds5y0WR-YqVko\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/colors.min.js" data-vk-froala-editor-plugin="colors"></script>
+<script>(window.FroalaEditor.PLUGINS.colors||document.write("\u003Cscript src=\u0022/dist/froala-editor/colors.min.js?v=BLxsvGD9_VdG4BLdAw0dLCchNAXJWCD0X43eWlXJ1T4\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/code_view.min.js" data-vk-froala-editor-plugin="codeView"></script>
+<script>(window.FroalaEditor.PLUGINS.codeView||document.write("\u003Cscript src=\u0022/dist/froala-editor/code_view.min.js?v=bavxhQCtytMiWHJKEJiA984bKljug_h9dHUm2IC2TBc\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/draggable.min.js" data-vk-froala-editor-plugin="draggable"></script>
+<script>(window.FroalaEditor.PLUGINS.draggable||document.write("\u003Cscript src=\u0022/dist/froala-editor/draggable.min.js?v=HdsRdPXfIuTTQ6IJ6Ben9AfFAQslYY-dhPqVgw2vvSU\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/third_party/embedly.min.js" data-vk-froala-editor-plugin="embedly"></script>
+<script>(window.FroalaEditor.PLUGINS.embedly||document.write("\u003Cscript src=\u0022/dist/froala-editor/embedly.min.js?v=4ThEs5iAiqapx1LggpuMD0i-An2uUr43tklKfaQL4ck\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/entities.min.js" data-vk-froala-editor-plugin="entities"></script>
+<script>(window.FroalaEditor.PLUGINS.entities||document.write("\u003Cscript src=\u0022/dist/froala-editor/entities.min.js?v=3PhPfOM8pxhZCexOkD_t5VIaqoOqIkNJAiU3lDhRdXM\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/file.min.js" data-vk-froala-editor-plugin="file"></script>
+<script>(window.FroalaEditor.PLUGINS.file||document.write("\u003Cscript src=\u0022/dist/froala-editor/file.min.js?v=OAvGsftKutxIp__eURT1erwyNSQ01iWxBHIiqOwAh9k\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/font_size.min.js" data-vk-froala-editor-plugin="fontSize"></script>
+<script>(window.FroalaEditor.PLUGINS.fontSize||document.write("\u003Cscript src=\u0022/dist/froala-editor/font_size.min.js?v=r1nceYwNh2XKvGdcpc5q4f6pSKYgzoK8vhWIwH47at4\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/line_breaker.min.js" data-vk-froala-editor-plugin="lineBreaker"></script>
+<script>(window.FroalaEditor.PLUGINS.lineBreaker||document.write("\u003Cscript src=\u0022/dist/froala-editor/line_breaker.min.js?v=gajAeAPQG5A1OtWUTNIOdWa2XcEsY47NOk3sA7KngEY\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/lists.min.js" data-vk-froala-editor-plugin="lists"></script>
+<script>(window.FroalaEditor.PLUGINS.lists||document.write("\u003Cscript src=\u0022/dist/froala-editor/lists.min.js?v=gx4FDFPNKpM9mPnG7mz4m4WEM38JraX6rJRwUlcvSX0\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/link.min.js" data-vk-froala-editor-plugin="link"></script>
+<script>(window.FroalaEditor.PLUGINS.link||document.write("\u003Cscript src=\u0022/dist/froala-editor/link.min.js?v=6GBK5FcDafeRvgR1_oltOAtR1o7t5q-77rpuengUyTE\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/paragraph_format.min.js" data-vk-froala-editor-plugin="paragraphFormat"></script>
+<script>(window.FroalaEditor.PLUGINS.paragraphFormat||document.write("\u003Cscript src=\u0022/dist/froala-editor/paragraph_format.min.js?v=BJrxFtMrQiu6a-nA61FTYgT4IqExxIwg3q18pW8EQBo\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/url.min.js" data-vk-froala-editor-plugin="url"></script>
+<script>(window.FroalaEditor.PLUGINS.url||document.write("\u003Cscript src=\u0022/dist/froala-editor/url.min.js?v=gRTU1qegHI-kavKGFc1mAfvfgiSnwFLuyqrVpb8sGlw\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/word_paste.min.js" data-vk-froala-editor-plugin="wordPaste"></script>
+<script>(window.FroalaEditor.PLUGINS.wordPaste||document.write("\u003Cscript src=\u0022/dist/froala-editor/word_paste.min.js?v=9sfbNocro5rdyd_wL_XQ1w17ZVuiZCv2BFNwxVIBIYc\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/froala-editor@4.5.2/js/plugins/image.min.js" data-vk-froala-editor-plugin="image"></script>
+<script>(window.FroalaEditor.PLUGINS.image||document.write("\u003Cscript src=\u0022/dist/froala-editor/image.min.js?v=pqI-EQ_bTLLcsf74VgsA4E0bQsc_ePARRe9DtN9c3PQ\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery-visible/1.2.0/jquery.visible.min.js" integrity="sha512-771ZvVCYr4EfUGXr63AcX7thw7EKa6QE1fhxi8JG7mPacB/arC0cyvYPXKUkCrX2sYKnnFCZby3ZZik42jOuSQ==" crossorigin="anonymous"></script>
+<script>(window.$.fn.visible||document.write("\u003Cscript src=\u0022/dist/jquery-visible/jquery.visible.min.js?v=VzXcD0HmV1s8RGdJ_yIf7YkZiOZrcxPphaDpwM--pSs\u0022 integrity=\u0022sha512-771ZvVCYr4EfUGXr63AcX7thw7EKa6QE1fhxi8JG7mPacB/arC0cyvYPXKUkCrX2sYKnnFCZby3ZZik42jOuSQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/qtip2/3.0.3/jquery.qtip.min.js" integrity="sha512-BxJRFdTKV85fhFUw&#x2B;olPr0B&#x2B;UEzk8FTLxRB7dAdhoQ7SXmwMECj1I4BlSmZfeoSfy0OVA8xFLTDyObu3Nv1FoQ==" crossorigin="anonymous"></script>
+<script>(window.$.fn.qtip||document.write("\u003Cscript src=\u0022/dist/qtip2/jquery.qtip.min.js?v=a-PRq3NbyK3G08Boio9X6-yFiHpTSIrbE7uzZvqmDac\u0022 integrity=\u0022sha512-BxJRFdTKV85fhFUw\u0026#x2B;olPr0B\u0026#x2B;UEzk8FTLxRB7dAdhoQ7SXmwMECj1I4BlSmZfeoSfy0OVA8xFLTDyObu3Nv1FoQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="/dist/slick-carousel/slick.js?v=m6pXPkN4hzt6yBzLHZVM6bsrGpM5R60wEiY93GBNhQU"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/masonry/4.2.2/masonry.pkgd.min.js" integrity="sha512-JRlcvSZAXT8&#x2B;5SQQAvklXGJuxXTouyq8oIMaYERZQasB8SBDHZaUbeASsJWpk0UUrf89DP3/aefPPrlMR1h1yQ==" crossorigin="anonymous"></script>
+<script>(window.$.fn.masonry||document.write("\u003Cscript src=\u0022/dist/masonry-layout/masonry.pkgd.min.js?v=Nn1q_fx0H7SNLZMQ5Hw5JLaTRZp0yILA_FRexe19VdI\u0022 integrity=\u0022sha512-JRlcvSZAXT8\u0026#x2B;5SQQAvklXGJuxXTouyq8oIMaYERZQasB8SBDHZaUbeASsJWpk0UUrf89DP3/aefPPrlMR1h1yQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha512-S5PZ9GxJZO16tT9r3WJp/Safn31eu8uWrzglMahDT4dsmgqWonRY9grk3j&#x2B;3tfuPr9WJNsfooOR7Gi7HL5W2jw==" crossorigin="anonymous"></script>
+<script>(window.$.fn.imagesLoaded||document.write("\u003Cscript src=\u0022/dist/imagesloaded/imagesloaded.pkgd.min.js?v=lqvxZrPLtfffUl2G_e7szqSvPBILGbwmsGE1MKlOi0Q\u0022 integrity=\u0022sha512-S5PZ9GxJZO16tT9r3WJp/Safn31eu8uWrzglMahDT4dsmgqWonRY9grk3j\u0026#x2B;3tfuPr9WJNsfooOR7Gi7HL5W2jw==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="/dist/_static/corejs-typeahead/vk/typeahead.bundle.js?v=OLzZOFQ3KeXzBKggMMmFOPTp_bVPWBdZgDa4jbk9_hg"></script>
+<script src="/dist/_static/jquery-datetimepicker/vk/jquery.datetimepicker.full.min.js?v=mbv3ZeYM9ay9OoBBajwvCu7d5A2scLTTLEAzzULn5Y8"></script>
+<script src="//cdn.embed.ly/jquery.embedly-3.1.2.min.js" integrity="sha512-OXPgLt3yGP7fUPVAi9elQXXgJ36phVS39tIIsX/TIjFMvYR5GNI3&#x2B;Wyd5Pxsppx/0hcL9HE&#x2B;KuqjCxll5ZtuRA==" crossorigin="anonymous"></script>
+<script>(window.$.fn.embedly||document.write("\u003Cscript src=\u0022/dist/_static/embedly/jquery.embedly.min.js?v=05pPJE1OXUsopJKKhuiSJ-3EIOWk_rMiJVkKK_ILnis\u0022 integrity=\u0022sha512-OXPgLt3yGP7fUPVAi9elQXXgJ36phVS39tIIsX/TIjFMvYR5GNI3\u0026#x2B;Wyd5Pxsppx/0hcL9HE\u0026#x2B;KuqjCxll5ZtuRA==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/jquery-validation@1.21.0/dist/jquery.validate.min.js" integrity="sha512-KFHXdr2oObHKI9w4Hv1XPKc898mE4kgYx58oqsc/JqqdLMDI4YjOLzom&#x2B;EMlW8HFUd0QfjfAvxSL6sEq/a42fQ==" crossorigin="anonymous"></script>
+<script>(window.$.validator||document.write("\u003Cscript src=\u0022/dist/jquery-validation/jquery.validate.js?v=kRL82372ur5YrVTjFWp9muao9yeU8AoLiJxSb5ekmHg\u0022 integrity=\u0022sha512-KFHXdr2oObHKI9w4Hv1XPKc898mE4kgYx58oqsc/JqqdLMDI4YjOLzom\u0026#x2B;EMlW8HFUd0QfjfAvxSL6sEq/a42fQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/jquery-validation@1.21.0/dist/additional-methods.min.js" integrity="sha512-owaCKNpctt4R4oShUTTraMPFKQWG9UdWTtG6GRzBjFV4VypcFi6&#x2B;M3yc4Jk85s3ioQmkYWJbUl1b2b2r41RTjA==" crossorigin="anonymous"></script>
+<script>(window.$.validator.methods.time||document.write("\u003Cscript src=\u0022/dist/jquery-validation/additional-methods.min.js?v=MtEA819Zls6dtLt5S5BpEMOhifPyz7gfzfgtNtY75lE\u0022 integrity=\u0022sha512-owaCKNpctt4R4oShUTTraMPFKQWG9UdWTtG6GRzBjFV4VypcFi6\u0026#x2B;M3yc4Jk85s3ioQmkYWJbUl1b2b2r41RTjA==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdn.jsdelivr.net/npm/jquery-validation@1.21.0/dist/localization/messages_sv.min.js" integrity="sha512-R1&#x2B;cPAoaSoucNdZezwEJ1wQwUQ640y4bMwaBx/94ck3udNkeX7mykL4iiI0wA5Oy/BUzvJl4MtDC8QGGJfuUVQ==" crossorigin="anonymous"></script>
+<script>(window.$.validator.messages.required.indexOf('obligatoriskt') > -1||document.write("\u003Cscript src=\u0022/dist/jquery-validation/messages_sv.js?v=9Pa8fSBDcIX_ja9U1_5iv3Mlg_bcueTQlecoSxFjNFk\u0022 integrity=\u0022sha512-R1\u0026#x2B;cPAoaSoucNdZezwEJ1wQwUQ640y4bMwaBx/94ck3udNkeX7mykL4iiI0wA5Oy/BUzvJl4MtDC8QGGJfuUVQ==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js" integrity="sha512-xq&#x2B;Vm8jC94ynOikewaQXMEkJIOBp7iArs3IhFWSWdRT3Pq8wFz46p&#x2B;ZDFAR7kHnSFf&#x2B;zUv52B3prRYnbDRdgog==" crossorigin="anonymous"></script>
+<script>(window.$.validator.unobtrusive||document.write("\u003Cscript src=\u0022/dist/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js?v=RFWFWIIPsjB4DucR4jqwxTWw13ZmtI-s6tVR2LJmZXk\u0022 integrity=\u0022sha512-xq\u0026#x2B;Vm8jC94ynOikewaQXMEkJIOBp7iArs3IhFWSWdRT3Pq8wFz46p\u0026#x2B;ZDFAR7kHnSFf\u0026#x2B;zUv52B3prRYnbDRdgog==\u0022 crossorigin=\u0022anonymous\u0022\u003E\u003C/script\u003E"));</script>
+<script src="/dist/modernizr-vk-build.js?v=xAXkXRm-NGpK5OWqx2jV3gfvbpoM2uEBM9LKKT33rrY"></script>
+
+
+
+<!-- #region Startup -->
+<script>
+	window.Culture = 'sv-SE';
+	window.UiCulture = 'sv';
+	window.ShortDateWatermark = 'åååå-mm-dd';
+	window.ShortTimeWatermark = 'hh:mm';
+	if ($.validator) {
+		$.validator.messages.number = 'Värdet måste vara numeriskt.';
+		
+$.validator.messages.dateISO = $.validator.messages.dateISO.replace('&Aring;&Aring;&Aring;&Aring;-MM-DD', window.ShortDateWatermark);$.validator.messages.time = 'Ange ett korrekt klockslag.';	}
+
+	window.commonImages = '_common';
+</script>
+
+<script src="/dist/entry-bundle.js?v=WmtbOUyQUPJy03fU7fIV7i5DEdg1bT526VZTB5hjHhY" data-main="aurelia-bootstrapper"></script>
+
+<!-- #endregion -->
+
+
+
+
+</head>
+<body id="body" class="mdc-typography"><div aurelia-app="main" style="display: none;"></div><div id="content-container">	<div id="NUGGNIVW">
+		<vkau-alert-message-box containerless></vkau-alert-message-box>
+	<script>$(document).on('aurelia-composed', function() {
+	requirejs(['common/core/aurelia-enhancer'], (enhancer) => {
+		enhancer.enhanceServerHtml('NUGGNIVW', '', 'undefined', '', '', null)
+	});
+});</script></div>
+
+<div id="XKXAXCLC" class="razor-load-area">
+	<div class="render-body">
+		
+
+
+
+<div id="classlist-index">
+	<section class="content-padding">
+		<div class="content-container">
+			<h1 class="sr-only-phone" aria-label="Klasslista">Klasslista</h1>
+			<section>
+				
+
+
+<div class="vk-field vk-editor-string vk-editor vk-field--select-list" vkau-avoid-fouc="true">
+	
+	<label id="SelectedClassIdAndStudentId_label" for="SelectedClassIdAndStudentId" class="sr-only" data-vk-displayname="SelectedClassIdAndStudentId">
+						SelectedClassIdAndStudentId.
+	</label>
+
+
+
+
+		
+
+		
+
+
+
+<div class="vk-field__input-control vk-editor-string__input-control mdc-select">	
+		<i class="mdc-select__dropdown-icon" aria-hidden="true"></i>
+
+
+	
+	<select id="SelectedClassIdAndStudentId" class="mdc-select__native-control" data-vk-qs-name="" vkau-auto-complete-options="force-selection.bind: true; searchable.bind: false; placeholder.bind: &#x27;--- Välj ---&#x27;; placeholder-when-disabled.bind: &#x27;--- Välj ---&#x27;" vkau-auto-complete.ref="autoCompleteRCGTDSHD" data-vk-unsaved-warning-tracked-on-load-by-hiddens="false" name="SelectedClassIdAndStudentId" value.bind="data.selectedClassIdAndStudentId &amp; interceptAttr:&#x27;vkau-auto-complete&#x27;:&#x27;boundValueChangedInterceptor&#x27;" vkau-auto-complete="vkau-auto-complete">
+		 
+
+				<option value="160214:974364" vkau-jquery-data="key: vk-option-data; value.bind: {&#x27;textHasHtml&#x27;:false,&#x27;entity&#x27;:&#x27;person&#x27;,&#x27;imageUrl&#x27;:&#x27;https://user.vklass.se/photo/small/9db743db-9487-4d15-b968-018763ead886.jpg?v=aea595a6-56d1-411b-b52f-69da91cb7c2f&#x27;,&#x27;context&#x27;:&#x27;Masten 2&#x27;,&#x27;readOnly&#x27;:false,&#x27;sortIndex&#x27;:1,&#x27;fullName&#x27;:&#x27;Knut&#x27;,&#x27;disabled&#x27;:false,&#x27;selected&#x27;:false,&#x27;text&#x27;:&#x27;Knut&#x27;,&#x27;value&#x27;:&#x27;160214:974364&#x27;}">
+					Knut
+				</option>
+				<option value="178975:974364" vkau-jquery-data="key: vk-option-data; value.bind: {&#x27;textHasHtml&#x27;:false,&#x27;entity&#x27;:&#x27;person&#x27;,&#x27;imageUrl&#x27;:&#x27;https://user.vklass.se/photo/small/9db743db-9487-4d15-b968-018763ead886.jpg?v=aea595a6-56d1-411b-b52f-69da91cb7c2f&#x27;,&#x27;context&#x27;:&#x27;4A&#x27;,&#x27;readOnly&#x27;:false,&#x27;sortIndex&#x27;:2,&#x27;fullName&#x27;:&#x27;Knut&#x27;,&#x27;disabled&#x27;:false,&#x27;selected&#x27;:false,&#x27;text&#x27;:&#x27;Knut&#x27;,&#x27;value&#x27;:&#x27;178975:974364&#x27;}">
+					Knut
+				</option>
+				<option value="115928:1223735" vkau-jquery-data="key: vk-option-data; value.bind: {&#x27;textHasHtml&#x27;:false,&#x27;entity&#x27;:&#x27;person&#x27;,&#x27;context&#x27;:&#x27;Bojen&#x27;,&#x27;readOnly&#x27;:false,&#x27;sortIndex&#x27;:3,&#x27;fullName&#x27;:&#x27;Matilda&#x27;,&#x27;disabled&#x27;:false,&#x27;selected&#x27;:false,&#x27;text&#x27;:&#x27;Matilda&#x27;,&#x27;value&#x27;:&#x27;115928:1223735&#x27;}">
+					Matilda
+				</option>
+				<option value="178989:1223735" vkau-jquery-data="key: vk-option-data; value.bind: {&#x27;textHasHtml&#x27;:false,&#x27;entity&#x27;:&#x27;person&#x27;,&#x27;context&#x27;:&#x27;1B&#x27;,&#x27;readOnly&#x27;:false,&#x27;sortIndex&#x27;:4,&#x27;fullName&#x27;:&#x27;Matilda&#x27;,&#x27;disabled&#x27;:false,&#x27;selected&#x27;:false,&#x27;text&#x27;:&#x27;Matilda&#x27;,&#x27;value&#x27;:&#x27;178989:1223735&#x27;}">
+					Matilda
+				</option>
+	</select>
+	
+
+</div>
+
+
+
+
+
+	
+
+	<span data-valmsg-for="SelectedClassIdAndStudentId" class="field-validation-valid mdc-textfield-helptext mdc-textfield-helptext--persistent mdc-textfield-helptext--validation-msg" data-valmsg-replace="true"></span>
+
+	
+
+</div>
+
+
+			</section>
+			<section>
+					<div if.bind="data.selectedClassIdAndStudentId | partOfValue:{ equals: '160214' }" vkau-avoid-fouc="true">
+						<section>
+							<h2>Masten 2</h2>
+							<section>
+								<vkau-expansion-panel caption="Personal" header-level.bind="3"
+													  expanded.one-time="true">
+
+									
+									<vkau-table items.bind="data.classList[0].staff"
+												tablet-responsiveness="none" straight-left-line.bind="true"
+												empty-text="Det finns ingen personal att visa.">
+
+										<vkau-table-column icon-badge.bind="true" icon-badge-entity="person" icon-badge-image-url-property="imageUrl" property="name" display-name="Namn"></vkau-table-column>
+
+										<vkau-table-column property="mobilePhone" is-phone.one-time="true" display-name="Mobiltelefon"></vkau-table-column>
+
+										<vkau-table-column in-expansion="phone" property="email" display-name="E-post" url-property="email" is-email.one-time="true"></vkau-table-column>
+
+										    <vkau-table-column header-cell-text-class="hidden" property="email" is-email.one-time="true" display-name="E-post"></vkau-table-column>
+										    <template replace-part="column-4">
+                                                <template if.bind="item.email">
+												    <div class="vk-table__in-column align-right">
+													    <a route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }"
+													       title="Skicka e-post via Vklass" aria-label="Skicka e-post via Vklass" class="hidden-print">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info"></vkau-icon>
+													    </a>
+												    </div>
+												    <div class="vk-table__in-expansion">
+													    <a class="vk-flex vk-flex--v-align-center no-underline"
+													       route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info margin-right-xxs"></vkau-icon>
+														    <span class="mdc-button__text">Skicka e-post via Vklass</span>
+													    </a>
+												    </div>
+											    </template>
+										    </template>
+
+									</vkau-table>
+
+								</vkau-expansion-panel>
+							</section>
+							<section>
+								<vkau-expansion-panel caption="Elever" header-level.bind="3" expanded.one-time="true"
+													  parent-trigger.one-time="false"
+													  outlined-trigger.one-time="true">
+										<p class="empty margin-bottom-s">Skolan har valt att inte publicera klasslistan här. Kontakta skolan för mer information.</p>
+
+								</vkau-expansion-panel>
+							</section>
+						</section>
+					</div>
+					<div if.bind="data.selectedClassIdAndStudentId | partOfValue:{ equals: '178975' }" vkau-avoid-fouc="true">
+						<section>
+							<h2>4A</h2>
+							<section>
+								<vkau-expansion-panel caption="Personal" header-level.bind="3"
+													  expanded.one-time="true">
+
+									
+									<vkau-table items.bind="data.classList[1].staff"
+												tablet-responsiveness="none" straight-left-line.bind="true"
+												empty-text="Det finns ingen personal att visa.">
+
+										<vkau-table-column icon-badge.bind="true" icon-badge-entity="person" icon-badge-image-url-property="imageUrl" property="name" display-name="Namn"></vkau-table-column>
+
+										<vkau-table-column property="mobilePhone" is-phone.one-time="true" display-name="Mobiltelefon"></vkau-table-column>
+
+										<vkau-table-column in-expansion="phone" property="email" display-name="E-post" url-property="email" is-email.one-time="true"></vkau-table-column>
+
+										    <vkau-table-column header-cell-text-class="hidden" property="email" is-email.one-time="true" display-name="E-post"></vkau-table-column>
+										    <template replace-part="column-4">
+                                                <template if.bind="item.email">
+												    <div class="vk-table__in-column align-right">
+													    <a route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }"
+													       title="Skicka e-post via Vklass" aria-label="Skicka e-post via Vklass" class="hidden-print">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info"></vkau-icon>
+													    </a>
+												    </div>
+												    <div class="vk-table__in-expansion">
+													    <a class="vk-flex vk-flex--v-align-center no-underline"
+													       route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info margin-right-xxs"></vkau-icon>
+														    <span class="mdc-button__text">Skicka e-post via Vklass</span>
+													    </a>
+												    </div>
+											    </template>
+										    </template>
+
+									</vkau-table>
+
+								</vkau-expansion-panel>
+							</section>
+							<section>
+								<vkau-expansion-panel caption="Elever" header-level.bind="3" expanded.one-time="true"
+													  parent-trigger.one-time="false"
+													  outlined-trigger.one-time="true">
+										<p class="empty margin-bottom-s">Skolan har valt att inte publicera klasslistan här. Kontakta skolan för mer information.</p>
+
+								</vkau-expansion-panel>
+							</section>
+						</section>
+					</div>
+					<div if.bind="data.selectedClassIdAndStudentId | partOfValue:{ equals: '115928' }" vkau-avoid-fouc="true">
+						<section>
+							<h2>Bojen</h2>
+							<section>
+								<vkau-expansion-panel caption="Personal" header-level.bind="3"
+													  expanded.one-time="true">
+
+									
+									<vkau-table items.bind="data.classList[2].staff"
+												tablet-responsiveness="none" straight-left-line.bind="true"
+												empty-text="Det finns ingen personal att visa.">
+
+										<vkau-table-column icon-badge.bind="true" icon-badge-entity="person" icon-badge-image-url-property="imageUrl" property="name" display-name="Namn"></vkau-table-column>
+
+										<vkau-table-column property="mobilePhone" is-phone.one-time="true" display-name="Mobiltelefon"></vkau-table-column>
+
+										<vkau-table-column in-expansion="phone" property="email" display-name="E-post" url-property="email" is-email.one-time="true"></vkau-table-column>
+
+										    <vkau-table-column header-cell-text-class="hidden" property="email" is-email.one-time="true" display-name="E-post"></vkau-table-column>
+										    <template replace-part="column-4">
+                                                <template if.bind="item.email">
+												    <div class="vk-table__in-column align-right">
+													    <a route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }"
+													       title="Skicka e-post via Vklass" aria-label="Skicka e-post via Vklass" class="hidden-print">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info"></vkau-icon>
+													    </a>
+												    </div>
+												    <div class="vk-table__in-expansion">
+													    <a class="vk-flex vk-flex--v-align-center no-underline"
+													       route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info margin-right-xxs"></vkau-icon>
+														    <span class="mdc-button__text">Skicka e-post via Vklass</span>
+													    </a>
+												    </div>
+											    </template>
+										    </template>
+
+									</vkau-table>
+
+								</vkau-expansion-panel>
+							</section>
+							<section>
+								<vkau-expansion-panel caption="Elever" header-level.bind="3" expanded.one-time="true"
+													  parent-trigger.one-time="false"
+													  outlined-trigger.one-time="true">
+										<p class="empty margin-bottom-s">Skolan har valt att inte publicera klasslistan här. Kontakta skolan för mer information.</p>
+
+								</vkau-expansion-panel>
+							</section>
+						</section>
+					</div>
+					<div if.bind="data.selectedClassIdAndStudentId | partOfValue:{ equals: '178989' }" vkau-avoid-fouc="true">
+						<section>
+							<h2>1B</h2>
+							<section>
+								<vkau-expansion-panel caption="Personal" header-level.bind="3"
+													  expanded.one-time="true">
+
+										<div class="vk-flex vk-flex--v-align-center margin-bottom-xs">
+											<a href="#/Communication/Email" route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ recipients: '4:178989:1B:STAFF' }" data-mdc-auto-init="MDCRipple" as-element="vkau-mdc-button" class="mdc-button mdc-button--unelevated mdc-button mdc-button--vk-discrete mdc-button--vk-lower-case">
+												<i class="material-icons mdc-button__icon">send</i>
+												Skicka e-post till all personal
+											</a>
+										</div>
+									
+									<vkau-table items.bind="data.classList[3].staff"
+												tablet-responsiveness="none" straight-left-line.bind="true"
+												empty-text="Det finns ingen personal att visa.">
+
+										<vkau-table-column icon-badge.bind="true" icon-badge-entity="person" icon-badge-image-url-property="imageUrl" property="name" display-name="Namn"></vkau-table-column>
+
+										<vkau-table-column property="mobilePhone" is-phone.one-time="true" display-name="Mobiltelefon"></vkau-table-column>
+
+										<vkau-table-column in-expansion="phone" property="email" display-name="E-post" url-property="email" is-email.one-time="true"></vkau-table-column>
+
+										    <vkau-table-column header-cell-text-class="hidden" property="email" is-email.one-time="true" display-name="E-post"></vkau-table-column>
+										    <template replace-part="column-4">
+                                                <template if.bind="item.email">
+												    <div class="vk-table__in-column align-right">
+													    <a route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }"
+													       title="Skicka e-post via Vklass" aria-label="Skicka e-post via Vklass" class="hidden-print">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info"></vkau-icon>
+													    </a>
+												    </div>
+												    <div class="vk-table__in-expansion">
+													    <a class="vk-flex vk-flex--v-align-center no-underline"
+													       route-href="route: MvcRoute; params.bind: { mvcController: &#x27;Communication&#x27;, mvcAction: &#x27;Email&#x27; }" vkau-route-href-mvc-params.bind="{ raw_recipients: item.name + ':' + item.email }">
+														    <vkau-icon name="send" css-class="mdc-button__icon vk-cl-info margin-right-xxs"></vkau-icon>
+														    <span class="mdc-button__text">Skicka e-post via Vklass</span>
+													    </a>
+												    </div>
+											    </template>
+										    </template>
+
+									</vkau-table>
+
+								</vkau-expansion-panel>
+							</section>
+							<section>
+								<vkau-expansion-panel caption="Elever" header-level.bind="3" expanded.one-time="true"
+													  parent-trigger.one-time="false"
+													  outlined-trigger.one-time="true">
+										<p class="empty margin-bottom-s">Skolan har valt att inte publicera klasslistan här. Kontakta skolan för mer information.</p>
+
+								</vkau-expansion-panel>
+							</section>
+						</section>
+					</div>
+			</section>
+		</div>
+	</section>
+<script>$(document).on('aurelia-composed', function() {
+	requirejs(['common/core/aurelia-enhancer'], (enhancer) => {
+		enhancer.enhanceServerHtml('classlist-index', '', '{"selectedClassIdAndStudentId":null,"classList":[{"classId":160214,"name":"Masten 2","showSendThroughCommunicationButton":true,"staff":[{"name":"Mert Yalmaz Kadir","imageUrl":null,"mobilePhone":null,"email":null,"url":null}],"students":[]},{"classId":178975,"name":"4A","showSendThroughCommunicationButton":true,"staff":[{"name":"Anna Svanström Hagdahl","imageUrl":null,"mobilePhone":null,"email":null,"url":null}],"students":[]},{"classId":115928,"name":"Bojen","showSendThroughCommunicationButton":true,"staff":[{"name":"Elin Kadfors","imageUrl":null,"mobilePhone":null,"email":null,"url":null},{"name":"Moa Jedvik","imageUrl":null,"mobilePhone":null,"email":null,"url":null}],"students":[]},{"classId":178989,"name":"1B","showSendThroughCommunicationButton":true,"staff":[{"name":"Nina Haaga","imageUrl":null,"mobilePhone":null,"email":"nina.haaga@grundskola.goteborg.se","url":null},{"name":"Susanne Maria Nordendahl","imageUrl":null,"mobilePhone":null,"email":null,"url":null}],"students":[]}]}', '', '', null)
+	});
+});</script></div>
+	</div>
+
+	<script>$(document).on('aurelia-composed', function() {
+		window['requirejs'](['common/core/html-loaded'], function(htmlLoadedModule) {
+			htmlLoadedModule.htmlLoaded($('#XKXAXCLC'), undefined, true);
+		});
+	});</script>
+
+</div>
+
+</div>	
+<div id="alert-snackbar" class="mdc-snackbar">
+	<div class="mdc-snackbar__surface">
+		<div class="mdc-snackbar__label" role="status" aria-live="polite"></div>
+		<div class="mdc-snackbar__actions">
+			<button type="button" class="mdc-button mdc-snackbar__action hidden"></button>
+			<button class="mdc-icon-button mdc-snackbar__dismiss material-icons" title="Stäng" aria-label="Stäng"><span aria-hidden="true">close</span></button>
+		</div>
+	</div>
+</div>
+
+<div id="alert-error-snackbar" class="mdc-snackbar">
+	<div class="mdc-snackbar__surface">
+		<div class="mdc-snackbar__label" role="status" aria-live="polite"></div>
+		<div class="mdc-snackbar__actions">
+			<button type="button" class="mdc-button mdc-snackbar__action hidden"></button>
+			<button class="mdc-icon-button mdc-snackbar__dismiss material-icons" title="Stäng" aria-label="Stäng"><span aria-hidden="true">close</span></button>
+		</div>
+	</div>
+</div>
+<div id="alert-dialog" class="mdc-dialog mdc-dialog--vk-fully-closed" aria-modal="true" data-rs-player.bind="'#' + alertDialogReadSpeaker.buttonId">
+	<div class="mdc-dialog__container">
+		<div class="mdc-dialog__surface mdc-dialog__surface--vk-width-500 mdc-dialog__surface--vk-state-modifiers">
+			<section id="alert-dialog-content" class="mdc-dialog__content">
+				<vkau-readspeaker read-id="alert-dialog" view-model.ref="alertDialogReadSpeaker"></vkau-readspeaker>
+				<span id="alert-dialog-message" aria-live="polite" class="keep-newlines"></span>
+			</section>
+			<div class="mdc-dialog__actions">
+				<button data-mdc-dialog-action="accept" data-mdc-auto-init="MDCRipple" unelevated.bind="false" as-element="vkau-mdc-button" class="mdc-button mdc-button--dense mdc-dialog__button" type="button"><span class="mdc-button__label">OK</span></button>
+			</div>
+		</div>
+	</div>
+	<div class="mdc-dialog__scrim"></div>
+</div>
+
+<div id="confirm-dialog" class="mdc-dialog mdc-dialog--vk-fully-closed" aria-modal="true" data-rs-player.bind="'#' + confirmDialogReadSpeaker.buttonId">
+	<div class="mdc-dialog__container">
+		<div class="mdc-dialog__surface mdc-dialog__surface--vk-width-500">
+			<section id="confirm-dialog-content" class="mdc-dialog__content">
+				<vkau-readspeaker read-id="confirm-dialog" view-model.ref="confirmDialogReadSpeaker"></vkau-readspeaker>
+				<span id="confirm-dialog-message" aria-live="polite" class="keep-newlines"></span>
+			</section>
+			<div class="mdc-dialog__actions">
+				<button data-mdc-dialog-action="close" data-mdc-auto-init="MDCRipple" unelevated.bind="false" as-element="vkau-mdc-button" class="mdc-button mdc-button--dense mdc-dialog__button" type="button"><span class="mdc-button__label"></span></button>
+				<button data-mdc-dialog-action="accept" data-mdc-auto-init="MDCRipple" unelevated.bind="false" as-element="vkau-mdc-button" class="mdc-button mdc-button--dense mdc-dialog__button" type="button"><span class="mdc-button__label"></span></button>
+			</div>
+		</div>
+	</div>
+	<div class="mdc-dialog__scrim"></div>
+</div>
+
+<div id="scrollbar-faux"></div>
+
+<div id="scss-value-carriers" style="display: none;">
+	<div id="gap"></div>
+	<div id="breakpoint-phone-max"></div>
+	<div id="breakpoint-phone-landscape-max"></div>
+	<div id="breakpoint-tablet-max"></div>
+	<div id="breakpoint-tablet-landscape-min"></div>
+	<div id="breakpoint-phone-drawer-max"></div>
+	<div id="breakpoint-collapsible-drawer-max"></div>
+	<div id="height-tab-navigation-tabs"></div>
+	<div id="horizontal-content-padding"></div>
+	<div id="horizontal-content-padding-phone"></div>
+	<div id="vertical-content-padding"></div>
+	<div id="content-container-max-width"></div>
+	<div id="permanent-drawer-width"></div>
+	<div id="collapsible-drawer-closed-width"></div>
+	<div id="fab-size"></div>
+	<div id="image-icon-name">image</div>
+	<div class="vk-cl-default"></div>
+	<div class="vk-cl-info"></div>
+	<div class="vk-cl-positive"></div>
+	<div class="vk-cl-negative"></div>
+	<div class="vk-cl-partial"></div>
+	<div class="vk-cl-soft"></div>
+	<div class="vk-cl-soft-background"></div>
+	<div class="vk-cl-gray-dark"></div>
+	<div class="vk-cl-gray-light"></div>
+	<div class="vk-cl-gray-lighter"></div>
+	<div class="vk-cl-chart-red"></div>
+	<div class="vk-cl-chart-yellow"></div>
+	<div class="vk-cl-chart-green"></div>
+	<div class="vk-cl-class"></div>
+	<div class="vk-cl-course"></div>
+	<div class="vk-cl-course-group"></div>
+	<div class="vk-cl-school"></div>
+	<div class="vk-cl-collaboration"></div>
+</div>
+
+<script>
+	//requestAnimationFrame polyfill
+	//https://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+	(function () {
+		var lastTime = 0;
+		var vendors = ['webkit', 'moz'];
+		for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+			window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+			window.cancelAnimationFrame =
+				window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+		}
+
+		if (!window.requestAnimationFrame)
+			window.requestAnimationFrame = function (callback, element) {
+				var currTime = new Date().getTime();
+				var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+				var id = window.setTimeout(function () { callback(currTime + timeToCall); },
+					timeToCall);
+				lastTime = currTime + timeToCall;
+				return id;
+			};
+
+		if (!window.cancelAnimationFrame)
+			window.cancelAnimationFrame = function (id) {
+				clearTimeout(id);
+			};
+	}());
+</script>
+
+
+
+<script>
+	function visualizeScreenReader() {
+		if ($('body').hasClass('vk-visualize-sr')) {
+			console.log('Screen reader already visualized');
+			return;
+		}
+
+		$('body').addClass('vk-visualize-sr');
+
+		$('.material-icons').css('opacity', '0.5');
+
+		$('button.mdc-radio__native-control').css('opacity', '1');
+
+		$('[aria-hidden="true"]:not([role="separator"])').each(function () {
+			if ($(this).closest('.material-icons').length === 0) {
+				$(this).css({ display: 'none', opacity: '0' });
+
+				if ($(this).is('.mdc-tab') && $(this).closest('.mdc-tab-bar--vk-first-tab-empty').length) {
+					$(this).css({ display: '', visibility: 'invisible' });
+				}
+			}
+		});
+
+		$('.sr-only, .sr-only-phone').each(function () {
+			var srClass = $(this).hasClass('sr-only-phone') ? 'sr-only-phone' : 'sr-only';
+			$(this).attr('data-vk-sr-class', srClass);
+
+			if ($(this).parent().is('.material-icons')) {
+				$(this).parent().attr('data-vk-remove-title', 'true').attr('title', $(this).text()).css('background-color', 'pink');
+				if ($(this).prev().is('[aria-hidden="true"][title]')) {
+					$(this).prev().attr('data-vk-original-title', $(this).prev().attr('title')).removeAttr('title');
+				}
+			} else if ($(this).prev().is('.material-icons[aria-hidden="true"]')) {
+				$(this).prev().attr('data-vk-original-title', $(this).prev().attr('title')).attr('title', $(this).text()).css('background-color', 'pink');
+			} else {
+				$(this).removeClass(srClass).css('text-transform', 'none');
+			}
+		});
+
+		$('[aria-label], [aria-labelledby]').each(function () {
+			if ($(this).parent().is('.vk-layout') || $(this).is('main, nav, header, form')) {
+				return;
+			}
+
+			if ($(this).children('.material-icons:not(.mdc-list-item__graphic)').length || $(this).is('.mdc-dialog')) {
+				return;
+			}
+
+			var labelText = $(this).attr('aria-label');
+			if (!labelText && $(this).attr('aria-labelledby')) {
+				labelText = '';
+				var selector = '#' + $(this).attr('aria-labelledby').replace(/ /g, ' #').split(' ').join(', ');
+				$(selector).each(function (index, element) {
+					labelText += $(element).text().trim() + ' ';
+				});
+				labelText = labelText.trim();
+			}
+
+			if (!labelText) {
+				return;
+			}
+
+			if ($(this).hasClass('material-icons') || $(this).is(':input')) {
+				$(this).attr('data-vk-original-title', $(this).attr('title')).attr('title', labelText).css('background-color', 'pink');
+				$(this).next('.mdc-checkbox__background').css('background-color', 'pink');
+			} else {
+				if (!$(this).is('input')) {
+					$(this).contents().wrapAll('<span data-vk-hidden class="hidden"></span>');
+					$('<span style="text-transform: none;">' + labelText + '</span>').appendTo($(this));
+				}
+				//, [role = "button"]
+				if ($(this).is('button:not([role]), .mdc-button')) {
+					$(this).css({ width: 'auto', height: 'auto', 'max-height': 'none', 'max-width': 'none' }).attr('data-vk-reset-inline', 'height width max-height max-width');
+				}
+			}
+		});
+
+		if ($('[role="dialog"]').filter(':visible').length === 0) {
+			$('.skip-link:not([aria-hidden="true"])').filter(':visible').each(function (index) {
+				$(this).addClass('skip-link--visual').css('top', 13 + (index * 45));
+			});
+		}
+
+		$('button:not([role]), [role="button"]').each(function () {
+			var text = 'Button';
+
+			var expanded = $(this).attr('aria-expanded');
+			if (expanded) {
+				text += expanded === 'false' ? ' Collapsed' : ' Expanded';
+			}
+
+			var $targetForRoleLabel = $(this);
+			var isExpansionPanelTrigger = $(this).is('.vk-expansion-panel__trigger');
+			if (isExpansionPanelTrigger) {
+				$targetForRoleLabel = $(this).find('.vk-expansion-panel__trigger__title');
+
+				if ($targetForRoleLabel.length && $targetForRoleLabel.parent().is('.vk-icon-badge-with-text__text')) {
+					$targetForRoleLabel = $targetForRoleLabel.parent().next();
+				}
+
+				if (!$targetForRoleLabel.length) {
+					$targetForRoleLabel = $(this);
+				}
+			}
+
+			var $icon = $(this).findIncludeSelf('.material-icons');
+			if ($icon.length === 1 && !isExpansionPanelTrigger) {
+				var title = $icon.attr('title');
+				if (!$icon.attr('data-vk-original-title')) {
+					$icon.attr('data-vk-original-title', title);
+				}
+
+				if (!title) {
+					title = $(this).attr('aria-label');
+				}
+
+				title = (title ? title + ' - ' : '') + text.toUpperCase();
+				$icon.attr('title', title).css('background-color', 'pink');
+			} else {
+				$targetForRoleLabel.append('<span class="vk-visualize-sr__role-label">' + text + '</span>');
+			}
+		});
+
+		$('[role="menu"]').each(function () {
+			var groupItems = [];
+
+			var resolveGroup = function () {
+				for (var i = 0; i < groupItems.length; i++) {
+					groupItems[i].append('<span class="vk-visualize-sr__role-label">' + (i + 1) + ' of ' + groupItems.length + '</span>');
+				}
+			};
+
+			$(this).children().not('[aria-hidden="true"]').each(function () {
+				var $item = $(this);
+				if ($item.is('[role="menuitem"]')) {
+					groupItems.push($item);
+				} else {
+					resolveGroup();
+					groupItems = [];
+				}
+			});
+			resolveGroup();
+		});
+
+		//Hacks
+		(function () {
+			var $careScheduleEditor = $('#careschedule-editor-wrapper').not('.hidden');
+			$careScheduleEditor.attr('data-vk-original-style', $careScheduleEditor.attr('style'));
+			$careScheduleEditor.css({ width: 400, left: 327, top: 170 });
+			$('#careschedule-editor-wrapper-header').css('max-width', 300);
+		})();
+		$('button p').css('display', 'inline');
+		$('.careschedule-common .overview--overview .overview__schedule .schedule-day__times').css('height', 'auto');
+	}
+
+	function visualizeScreenReaderOff() {
+		$('body').removeClass('vk-visualize-sr');
+		$('.vk-visualize-sr__role-label').remove();
+
+		$('.material-icons').css('opacity', '').css('background-color', '');
+
+		$('button.mdc-radio__native-control').css('opacity', '');
+
+		$('[aria-hidden="true"]').each(function () {
+			if ($(this).closest('.material-icons').length === 0) {
+				$(this).css({ display: '', opacity: '' });
+			}
+		});
+
+		$('[data-vk-sr-class]').each(function () {
+			var srClass = $(this).attr('data-vk-sr-class');
+			$(this).removeAttr('data-vk-sr-class');
+			if ($(this).prev().is('.material-icons[aria-hidden="true"]')) {
+				$(this).prev().attr('title', $(this).prev().attr('data-vk-original-title')).removeAttr('data-vk-original-title').css('background-color', '');
+			} else {
+				$(this).addClass(srClass).css('text-transform', '');
+			}
+		});
+
+		$('[data-vk-remove-title="true"]').removeAttr('title');
+
+		$('[aria-label], [aria-labelledby]').each(function () {
+			if ($(this).parent().is('.vk-layout')) {
+				return;
+			}
+
+			if ($(this).children('.material-icons:not(.mdc-list-item__graphic)').length || $(this).is('.mdc-dialog')) {
+				return true;
+			}
+
+			if ($(this).hasClass('material-icons')) {
+				$(this).attr('title', $(this).attr('data-vk-original-title')).removeAttr('data-vk-original-title').css('background-color', '');
+			} else {
+				$(this).children().last().remove();
+				$(this).find('[data-vk-hidden]').contents().unwrap();
+			}
+		});
+
+		$('.skip-link--visual').each(function () {
+			$(this).removeClass('skip-link--visual').css('top', '');
+		});
+
+		$('.mdc-checkbox__native-control[style]:not([data-vk-original-title])').each(function () {
+			$(this).removeAttr('title');
+			$(this).next('.mdc-checkbox__background').removeAttr('style');
+		});
+
+		$('[data-vk-original-title]').each(function () {
+			$(this).attr('title', $(this).attr('data-vk-original-title'));
+			$(this).removeAttr('data-vk-original-title');
+			$(this).next('.mdc-checkbox__background').removeAttr('style');
+		});
+
+		$('[data-vk-reset-inline]').each(function () {
+			var props = $(this).attr('data-vk-reset-inline').split(' ');
+			for (var i = 0; i < props.length; i++) {
+				$(this).css(props[i], '');
+			}
+		}).removeAttr('data-vk-reset-inline');
+
+		//Hacks
+		(function () {
+			var $careScheduleEditor = $('#careschedule-editor-wrapper').not('.hidden');
+			$careScheduleEditor.attr('style', $careScheduleEditor.attr('data-vk-original-style')).removeAttr('data-vk-original-style');
+			$('#careschedule-editor-wrapper-header').css('max-width', '');
+		})();
+		$('button p').css('display', '');
+		$('.careschedule-common .overview--overview .overview__schedule .schedule-day__times').css('height', '');
+	}
+</script>
+
+<script src="/lib/sly/vk/sly.js?v=yIzeynnFcRQF_jnyrnR8ToaLUqoldkf21BruT3Yck4k"></script> 
+
+</body></html>
