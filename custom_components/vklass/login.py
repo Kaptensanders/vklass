@@ -9,30 +9,22 @@ import json
 import asyncio
 import aiohttp
 from contextlib import suppress
-from .const import (
-    VKLASS_CONFKEY_ASYNC_COOKIE_CB,
-    VKLASS_CONFKEY_USERNAME,
-    VKLASS_CONFKEY_PASSWORD,
-    VKLASS_CONFKEY_COOKIEFILE,
-    VKLASS_CONFKEY_COOKIEFILE_TYPE,
-    VKLASS_CONFKEY_KEEPALIVE_MIN,
-    VKLASS_ASYNC_ON_AUTH_FAIL_CB,
-    VKLASS_ASYNC_ON_AUTH_COOKIE_UPDATE,
 
-    VKLASS_COOKIE_RETRIVAL_METHOD_MANUAL,
-    VKLASS_COOKIE_RETRIVAL_METHOD_FUNCTION,
-    VKLASS_COOKIE_RETRIVAL_METHOD_FILE,
-    VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN,
 
-    VKLASS_CONFKEY_COOKIEFILE_TYPE_CHROMIUM,
-    VKLASS_CONFKEY_COOKIEFILE_TYPE_FIREFOX,
-)
-
-async def authenticate_bankid_qr(url:str, qrCallback) -> bool:
+async def authenticate_bankid_qr(aiohttp_session, url:str, qrCallback) -> bool:
+    # real implementation on the way, from authenticate_bankid_stub
     ...
 
 
+
+
+
+
+
+
 async def authenticate_bankid_stub(url:str) -> bool:
+    # just an example, not a real implementation, will be replaced by authenticate_bankid_qr
+    # stub flow
     import requests
     from bs4 import BeautifulSoup
     from urllib.parse import urlparse, parse_qs

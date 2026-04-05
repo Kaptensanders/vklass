@@ -6,30 +6,41 @@ from collections.abc import Callable
 from typing import TypedDict, TypeAlias, Any
 from pathlib import Path
 from bs4 import BeautifulSoup
+from http.cookies import SimpleCookie
+from yarl import URL
 import re
 import json
 import asyncio
 import aiohttp
 from contextlib import suppress
 from .const import (
-    VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD,
-    VKLASS_CONFKEY_ASYNC_COOKIE_CB,
+    VKLASS_AUTH_USERNAME_PASSWORD,
+    VKLASS_AUTH_BANKID_QR,
+    VKLASS_AUTH_BANKID_PERSONALNO,
+
+    VKLASS_CONFKEY_AUTH_METHOD,
+    VKLASS_CONFKEY_PERSONNO,
     VKLASS_CONFKEY_USERNAME,
     VKLASS_CONFKEY_PASSWORD,
-    VKLASS_CONFKEY_COOKIEFILE,
-    VKLASS_CONFKEY_COOKIEFILE_TYPE,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
-    VKLASS_ASYNC_ON_AUTH_FAIL_CB,
-    VKLASS_ASYNC_ON_AUTH_COOKIE_UPDATE,
-
-    VKLASS_COOKIE_RETRIVAL_METHOD_MANUAL,
-    VKLASS_COOKIE_RETRIVAL_METHOD_FUNCTION,
-    VKLASS_COOKIE_RETRIVAL_METHOD_FILE,
-    VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN,
-
-    VKLASS_CONFKEY_COOKIEFILE_TYPE_CHROMIUM,
-    VKLASS_CONFKEY_COOKIEFILE_TYPE_FIREFOX,
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
 )
+
+
+'''
+config = {
+
+    VKLASS_CONFKEY_AUTH_METHOD                  # VKLASS_AUTH_USERNAME_PASSWORD | VKLASS_AUTH_BANKID_QR | VKLASS_AUTH_BANKID_PERSONALNO
+    VKLASS_CONFKEY_PERSONNO                     # personal number (VKLASS_AUTH_BANKID_PERSONALNO)      
+    VKLASS_CONFKEY_USERNAME                     # username (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
+    VKLASS_CONFKEY_PASSWORD                     # password (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
+    VKLASS_CONFKEY_KEEPALIVE_MIN                # minutes between keepalive calls
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB        # async callback function to notify when Authentication has failed, and the VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD did not resolve auth (manual action needed, BankId login etc)
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, cookie value as input parameter    
+}
+'''
+
 
 _EPKEY_URL              = "url"
 _EPKEY_SUCCCESS_CODE    = "success_code"
@@ -38,6 +49,9 @@ _EPKEY_ALLOWREDIRECTS   = "allow_redirects"
 
 _EPTYPE_JSON            = "application/json"
 _EPTYPE_HTML            = "text/html"
+
+_AUTH_COOKIE_NAME       = "se.vklass.authentication"
+_AUTH_COOKIE_DOMAIN     = ".vklass.se"
 
 _VKLASS_URL_BASE        = "https://custodian.vklass.se"
 _EP_LOGIN               = "login"
@@ -86,7 +100,6 @@ def _get_ep_url (endpoint:str):
     return ep[_EPKEY_URL]
 
 
-
 log = getLogger(__name__)
 
 class ObjBase(ABC):
@@ -116,25 +129,21 @@ class ObjBase(ABC):
 '''
 config = {
 
-    VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD   # VKLASS_COOKIE_RETRIVAL_METHOD_MANUAL | VKLASS_COOKIE_RETRIVAL_METHOD_FUNCTION | VKLASS_COOKIE_RETRIVAL_METHOD_FILE | VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN
-    VKLASS_CONFKEY_ASYNC_COOKIE_CB          # async function to retrieve auth cookies (VKLASS_COOKIE_RETRIVAL_METHOD_FUNCTION)
-    VKLASS_CONFKEY_USERNAME                 # username (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
-    VKLASS_CONFKEY_PASSWORD                 # password (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
-    VKLASS_CONFKEY_COOKIEFILE               # cookie file path (VKLASS_COOKIE_RETRIVAL_METHOD_FILE)
-    VKLASS_CONFKEY_COOKIEFILE_TYPE          # cookie file type: VKLASS_CONFKEY_COOKIEFILE_TYPE_CHROMIUM | VKLASS_CONFKEY_COOKIEFILE_TYPE_FIREFOX
-    VKLASS_CONFKEY_KEEPALIVE_MIN            # minutes between keepalive calls
-    VKLASS_ASYNC_ON_AUTH_FAIL_CB            # async callback function to notify when Authentication has failed, and the VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD did not resolve auth (manual action needed, BankId login etc)
-    VKLASS_ASYNC_ON_AUTH_COOKIE_UPDATE      # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, cookie:dict as input parameter
+    VKLASS_CONFKEY_AUTH_METHOD                  # VKLASS_AUTH_USERNAME_PASSWORD | VKLASS_AUTH_BANKID_QR | VKLASS_AUTH_BANKID_PERSONALNO
+    VKLASS_CONFKEY_PERSONNO                     # personal number (VKLASS_AUTH_BANKID_PERSONALNO)      
+    VKLASS_CONFKEY_USERNAME                     # username (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
+    VKLASS_CONFKEY_PASSWORD                     # password (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
+    VKLASS_CONFKEY_KEEPALIVE_MIN                # minutes between keepalive calls
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB        # async callback function to notify when Authentication has failed, and the VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD did not resolve auth (manual action needed, BankId login etc)
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, cookie value as input parameter    
 }
 '''
 
 class VklassSession(ObjBase):
 
-    def __init__(self, asyncExecutor, aiohttp_session, config):
+    def __init__(self, config, aiohttp_session):
         super().__init__()
         self._config = config
-        self._cookies = {}
-        self._asyncExecutor = asyncExecutor
         self._aiohttp_session = aiohttp_session
         self._reAuth = False
         self._authFail = False
@@ -143,93 +152,62 @@ class VklassSession(ObjBase):
         self._headers = {
             "accept": "*/*",
             "content-type": "application/x-www-form-urlencoded",
-            "origin": "https://custodian.vklass.se",
-            "referer": "https://custodian.vklass.se/",
+            "origin": _VKLASS_URL_BASE,
+            "referer": f"{_VKLASS_URL_BASE}/",
             "user-agent": "Mozilla/5.0",
         }
 
-    def setCookies (self, cookies:dict|str):
-        if isinstance(cookies, dict):
-            self._cookies = {
-                str(name).strip(): str(value).strip()
-                for name, value in cookies.items()
-                if str(name).strip() and str(value).strip()
-            }
-        elif isinstance(cookies, str):
-            parsed_cookies = {}
-            for cookie_part in cookies.split(";"):
-                cookie_part = cookie_part.strip()
-                if not cookie_part or "=" not in cookie_part:
-                    continue
+    def setAuthCookie(self, value:str):
 
-                name, value = cookie_part.split("=", 1)
-                name = name.strip()
-                value = value.strip()
-                if not name or not value:
-                    continue
+        if not value:
+            return
 
-                parsed_cookies[name] = value
+        # update the self._aiohttp_session cookie jar with the new cookie, so that it is included in subsequent requests, and also update the internal cookie dict 
+        cookie = SimpleCookie()
+        cookie[_AUTH_COOKIE_NAME] = value
+        c = cookie[_AUTH_COOKIE_NAME]
+        c["domain"] = _AUTH_COOKIE_DOMAIN
+        c["path"] = "/"
+        c["secure"] = True
+        c["httponly"] = True
 
-            self._cookies = parsed_cookies
-        else:
-            raise TypeError(f"Cookie type must be str or dict, not {type(cookies)}")
-
+        self._aiohttp_session.cookie_jar.update_cookies(
+            cookie,
+            response_url=URL(_VKLASS_URL_BASE),
+        )
 
     def isAuthFail (self) -> bool:
         return self._authFail
 
-    async def setAuthFail(self):
+    async def _setAuthFail(self):
         self._authFail = True
-        if fn := self._config.get(VKLASS_ASYNC_ON_AUTH_FAIL_CB, None):
+        if fn := self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB, None):
             await fn()
 
-    def setAuthSuccess(self):
+    def _setAuthSuccess(self):
         self._authFail = False
 
-    async def _updateAuthCookiesFromResponse(self, response_cookies) -> None:
-        if not response_cookies:
+    async def _handleResponseCookies(self, response_cookies) -> None:
+
+        cb = self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE, None)
+        if not cb:
             return
 
-        cookies = dict(self._cookies)
-
-        updated_names = []
-
-        for cookie_jar in response_cookies:
-            for name, morsel in cookie_jar.items():
-                value = morsel.value.strip()
-
-                if not value:
-                    if name in cookies:
-                        del cookies[name]
-                        updated_names.append(name)
-                    continue
-
-                if cookies.get(name) != value:
-                    cookies[name] = value
-                    updated_names.append(name)
-
-        if not updated_names:
-            return
-
-        self._cookies = cookies
-        if self.DEBUG:
-            updated_names = list(dict.fromkeys(updated_names))
-            log.info("Updated Vklass cookies from response: %s", ", ".join(updated_names))
-
-
-        if fn := self._config.get(VKLASS_ASYNC_ON_AUTH_COOKIE_UPDATE, None):
-            await fn(cookies)
+        for cookies in response_cookies:
+            for name, morsel in cookies.items():
+                if name == _AUTH_COOKIE_NAME:
+                    await cb(morsel.value)
+                    return
 
 
     async def _fetch (self, ep_key:str, data = None) -> str | dict :
 
         ep = _ENDPOINTS[ep_key]
 
-        await self._updateAuthCookies(force=self._reAuth)
+        await self._authenticate(force=self._reAuth)
         request_method = self._aiohttp_session.get if data is None else self._aiohttp_session.post
         request_kwargs = {
             "headers": self._headers,
-            "cookies": self._cookies,
             "allow_redirects": ep[_EPKEY_ALLOWREDIRECTS],
             "raise_for_status": False,
             "timeout": 30,
@@ -255,7 +233,7 @@ class VklassSession(ObjBase):
                             log.info("Authentication failed, renewing auth cookies and retrying")
                             return await self._fetch(ep_key, data)
 
-                        await self.setAuthFail()
+                        await self._setAuthFail()
                         raise ConnectionError(f"Authentication failed when fetching {uri}: HTTP {response.status}")
 
                     raise ConnectionError(f"Unexpected response fetching {ep[_EPKEY_URL]}: HTTP {response.status}, expected {ep[_EPKEY_SUCCCESS_CODE]}")
@@ -279,8 +257,8 @@ class VklassSession(ObjBase):
             raise ConnectionError(f"Request to {uri} failed: {err}") from err
 
         self._reAuth = False
-        self.setAuthSuccess()
-        await self._updateAuthCookiesFromResponse(response_cookies)
+        self._setAuthSuccess()
+        await self._handleResponseCookies(response_cookies)
 
         if self.DEBUG:
             if ep[_EPKEY_CONTENTTYPE] == _EPTYPE_JSON:
@@ -290,29 +268,9 @@ class VklassSession(ObjBase):
 
         return content
 
+    async def _authenticate (self, force:bool = False):
+        return True
 
-    async def _updateAuthCookies (self, force:bool = False):
-        # if a cookie exists, and not force, we are authenticated
-        if not force and self._cookies:
-            return True
-
-        cookies = None
-
-        # resolve auth method 
-        cookieMethod = self._config[VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD]
-
-        if cookieMethod == VKLASS_COOKIE_RETRIVAL_METHOD_MANUAL:
-            return
-        elif cookieMethod == VKLASS_COOKIE_RETRIVAL_METHOD_FUNCTION: 
-            cookies = await self._config[VKLASS_CONFKEY_ASYNC_COOKIE_CB]()
-        elif cookieMethod == VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN:
-            raise NotImplementedError("Username/password login is not implemented yet")
-        elif cookieMethod == VKLASS_COOKIE_RETRIVAL_METHOD_FILE:
-            raise NotImplementedError("Cookie-file auth is not implemented yet")
-        else:
-            raise ValueError(f"Unknown cookie retrieval method: {cookieMethod}")
-
-        self.setCookies(cookies)
 
     async def _keepAliveLoop(self, loopLen:int):
         interval_seconds = int(loopLen) * 60
@@ -322,9 +280,6 @@ class VklassSession(ObjBase):
         while True:
             try:
                 await asyncio.sleep(interval_seconds)
-
-                if self.DEBUG:
-                    log.info ("Keepalive...")
 
                 if not self._students:
                     await self._mapStudents()
@@ -444,8 +399,8 @@ class VklassSession(ObjBase):
 
 class VklassGateway(VklassSession):
 
-    def __init__(self, asyncExecutor, aiohttp_session, config):
-        super().__init__(asyncExecutor, aiohttp_session, config)
+    def __init__(self, config, aiohttp_session):
+        super().__init__(config, aiohttp_session)
 
 
     async def getCalendar(self, dateBegin:str, dateEnd:str, childIds:list|None=None):
