@@ -1,0 +1,28 @@
+#!/bin/bash
+
+echo "--- begin project specific setup for vklass --"
+
+# TODO
+# Add project specific setup directives to this file
+# It will be called by "container setup-project" (see devcontainer.json postCreateCommand)
+
+# ---------------------------------------------------------------
+# Bootstrap Home Assistant .storage from repo snapshot
+
+BOOTSTRAP_STORAGE="$WORKSPACE_DIR/.devcontainer/ha_config_bootstrap/.storage"
+HA_STORAGE="$HA_CONFIG_DIR/.storage"
+
+if [ -d "$BOOTSTRAP_STORAGE" ]; then
+  echo "Bootstrapping Home Assistant .storage from repo snapshot"
+
+  mkdir -p "$HA_STORAGE"
+  cp -R "$BOOTSTRAP_STORAGE/." "$HA_STORAGE/"
+
+else
+  echo "No HA bootstrap storage found, skipping"
+fi
+
+
+# ---------------------------------------------------------------
+# Bootstrap Home Assistant .storage from repo snapshot
+

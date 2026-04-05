@@ -1,0 +1,104 @@
+{
+    "name": "vklass-dev",
+    "image": "hass_dev_image_2026.3.4",
+    "postCreateCommand": "container setup-project",
+    "containerEnv": {},
+    "forwardPorts": [
+        5678
+    ],
+    "appPort": [
+        "8123:8123"
+    ],
+
+    "remoteUser": "vscode",
+    /* set on host side before anything, so no ${containerEnv:XX} usage here*/
+    "workspaceFolder": "/workspaces/vklass",
+    "workspaceMount": "source=${localWorkspaceFolder},target=${containerWorkspaceFolder},type=bind",
+    "mounts": [
+        "source=/mnt/c/Users/Anders/AppData/Local/Google/Chrome/User Data/Default/Network/Cookies,target=/home/vscode/cookie_files/chrome/Cookies,type=bind,readonly"
+    ],
+    "runArgs": [
+        "--name",
+        "hass-vklass-dev",
+        "--env-file",
+        ".devcontainer/container.env",
+        "--security-opt=seccomp=unconfined"
+    ],
+    "customizations": {
+        /* fine to use ${containerEnv:XX} usage here*/
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "${containerEnv:HA_DIR}/.venv/bin/python",
+                "python.analysis.extraPaths": [
+                    "${containerEnv:HA_DIR}",
+                    "${containerEnv:HA_DIR}/.venv/lib/python3.13/site-packages"
+                ],
+                "python.analysis.include": [
+                    "${containerEnv:WORKSPACE_DIR}/custom_components",
+                    "${containerEnv:WORKSPACE_DIR}/test",
+                    "${containerEnv:WORKSPACE_DIR}/vklass-card"
+                ],
+                "python.analysis.exclude": [
+                    "${containerEnv:HA_DIR}/**",
+                    "${containerEnv:HA_CONFIG_DIR}/**",
+                    "${containerEnv:WORKSPACE_DIR}/.devcontainer/**",
+                    "${containerEnv:WORKSPACE_DIR}/.git/**",
+                    "${containerEnv:WORKSPACE_DIR}/.github/**",
+                    "${containerEnv:WORKSPACE_DIR}/.vscode/**",
+                    "${containerEnv:WORKSPACE_DIR}/.pytest_cache/**",
+                    "${containerEnv:WORKSPACE_DIR}/temp/**",
+                    "${containerEnv:WORKSPACE_DIR}/vklass-card/node_modules/**"
+                ],
+                "files.exclude": {
+                    "**/.git": true,
+                    "**/.svn": true,
+                    "**/.hg": true,
+                    "**/CVS": true,
+                    "**/.DS_Store": true,
+                    "**/Thumbs.db": true,
+                    "**/__pycache__": true,
+                    "**/.pytest_cache": true,
+                    "**/temp": true,
+                    "**/node_modules": true
+                },
+                "search.exclude": {
+                    "**/.git": true,
+                    "**/.svn": true,
+                    "**/.hg": true,
+                    "**/CVS": true,
+                    "**/.DS_Store": true,
+                    "**/Thumbs.db": true,
+                    "**/__pycache__": true,
+                    "**/.pytest_cache": true,
+                    "**/temp": true,
+                    "**/node_modules": true
+                },
+                "files.watcherExclude": {
+                    "**/.git/**": true,
+                    "**/.svn/**": true,
+                    "**/.hg/**": true,
+                    "**/CVS/**": true,
+                    "**/__pycache__/**": true,
+                    "**/.pytest_cache/**": true,
+                    "**/temp/**": true,
+                    "**/node_modules/**": true
+                },
+                "ruff.exclude": [
+                    ".pytest_cache",
+                    "temp",
+                    "vklass-card/node_modules",
+                    "ha_core",
+                    "ha_config"
+                ]
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "esbenp.prettier-vscode",
+                "ms-python.debugpy",
+                "charliermarsh.ruff",
+                "dbaeumer.vscode-eslint"
+            ]
+        }
+    }
+}
