@@ -7,11 +7,6 @@ from tests.helpers import bootstrap  # noqa: F401
 
 from vklassgateway import ( # noqa: E402
     VklassGateway,
-    VKLASS_AUTH_USERNAME_PASSWORD,
-    VKLASS_AUTH_BANKID_QR,
-    VKLASS_AUTH_BANKID_PERSONALNO,
-
-    VKLASS_CONFKEY_AUTH_METHOD,
     VKLASS_CONFKEY_AUTH_URL,
     VKLASS_CONFKEY_PERSONNO,
     VKLASS_CONFKEY_USERNAME,
@@ -21,16 +16,6 @@ from vklassgateway import ( # noqa: E402
     VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
 )
-
-async def loadAuthFlow(url):
-    
-    if "authpub.goteborg.se" in url:
-        return await loadBankIdAuthFlow(url)
-        auth.vklass.se/bankid
-
-
-    return authData
-
 
 logging.basicConfig(level=logging.INFO)
     
@@ -61,7 +46,6 @@ def loadCookieFromFile():
 '''
 config = {
 
-    VKLASS_CONFKEY_AUTH_METHOD              # VKLASS_AUTH_USERNAME_PASSWORD | VKLASS_AUTH_BANKID_QR | VKLASS_AUTH_BANKID_PERSONALNO
     VKLASS_CONFKEY_PERSONNO                 # personal number (VKLASS_AUTH_BANKID_PERSONALNO)
     VKLASS_CONFKEY_USERNAME                 # username (VKLASS_AUTH_USERNAME_PASSWORD)
     VKLASS_CONFKEY_PASSWORD                 # password (VKLASS_AUTH_USERNAME_PASSWORD)
@@ -73,7 +57,6 @@ config = {
 
 configs = {
     "manual" : {
-        VKLASS_CONFKEY_AUTH_METHOD                  : VKLASS_AUTH_BANKID_QR,
         VKLASS_CONFKEY_AUTH_URL                     : "https://authpub.goteborg.se/sp/sps/eidpub/saml20/logininitial?RequestBinding=HTTPPost&ResponseBinding=HTTPPost&Target=https%3A%2F%2Fauthpub.goteborg.se%2Fidp%2Fsps%2Fauth%3FFedId%3Duuidc69b10fc-018d-1e46-bd45-84b46fd723a9",
         VKLASS_CONFKEY_USERNAME                     : None,
         VKLASS_CONFKEY_PASSWORD                     : None,

@@ -14,11 +14,6 @@ import asyncio
 import aiohttp
 from contextlib import suppress
 from .const import (
-    VKLASS_AUTH_USERNAME_PASSWORD,
-    VKLASS_AUTH_BANKID_QR,
-    VKLASS_AUTH_BANKID_PERSONALNO,
-
-    VKLASS_CONFKEY_AUTH_METHOD,
     VKLASS_CONFKEY_AUTH_URL,
     VKLASS_CONFKEY_PERSONNO,
     VKLASS_CONFKEY_USERNAME,
@@ -33,8 +28,7 @@ from .login import authenticate
 '''
 config = {
 
-    VKLASS_CONFKEY_AUTH_METHOD                  # VKLASS_AUTH_USERNAME_PASSWORD | VKLASS_AUTH_BANKID_QR | VKLASS_AUTH_BANKID_PERSONALNO
-    VKLASS_CONFKEY_PERSONNO                     # personal number (VKLASS_AUTH_BANKID_PERSONALNO)      
+    VKLASS_CONFKEY_PERSONNO                     # personal number      
     VKLASS_CONFKEY_USERNAME                     # username (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
     VKLASS_CONFKEY_PASSWORD                     # password (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
     VKLASS_CONFKEY_KEEPALIVE_MIN                # minutes between keepalive calls
@@ -125,21 +119,7 @@ class ObjBase(ABC):
                 f.write(dump)
         else:
             log.info(dump)
-    
 
-
-'''
-config = {
-
-    VKLASS_CONFKEY_AUTH_METHOD                  # VKLASS_AUTH_USERNAME_PASSWORD | VKLASS_AUTH_BANKID_QR | VKLASS_AUTH_BANKID_PERSONALNO
-    VKLASS_CONFKEY_PERSONNO                     # personal number (VKLASS_AUTH_BANKID_PERSONALNO)      
-    VKLASS_CONFKEY_USERNAME                     # username (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
-    VKLASS_CONFKEY_PASSWORD                     # password (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
-    VKLASS_CONFKEY_KEEPALIVE_MIN                # minutes between keepalive calls
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB        # async callback function to notify when Authentication has failed, and the VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD did not resolve auth (manual action needed, BankId login etc)
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, cookie value as input parameter    
-}
-'''
 
 class VklassSession(ObjBase):
 

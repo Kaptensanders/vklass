@@ -19,7 +19,7 @@ _BANKID_BASE = "https://eid-connect.funktionstjanster.se"
 log = getLogger(__name__)
 
 def can_handle(url:str) -> bool:
-    return "authpub.goteborg.se" in url
+    return "authpub.goteborg.se" in url  # = BankID auth for Göteborg
 
 
 def _snippet(value, limit: int = 240) -> str:
@@ -336,7 +336,7 @@ async def _step3_poll_qr(session, auth, qr_callback):
 
 
 # ------------------------------------------------------------
-# STEP 4 — finalize (IMPORTANT)
+# STEP 4 — finalize, may be important..... TODO, we dont know if this is needed ot not, come back to it in hardening phase
 # ------------------------------------------------------------
 
 async def _step4_finalize(session, auth):
