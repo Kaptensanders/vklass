@@ -19,14 +19,20 @@ from .const import (
     VKLASS_AUTH_BANKID_PERSONALNO,
 
     VKLASS_CONFKEY_AUTH_METHOD,
+    VKLASS_CONFKEY_AUTH_URL,
     VKLASS_CONFKEY_PERSONNO,
     VKLASS_CONFKEY_USERNAME,
     VKLASS_CONFKEY_PASSWORD,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
+    VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
 )
-
+from .login import (
+    authenticate_bankid_qr,
+    authenticate_bankid_peronno,
+    authenticate_userpass
+)
 
 '''
 config = {
@@ -269,6 +275,23 @@ class VklassSession(ObjBase):
         return content
 
     async def _authenticate (self, force:bool = False):
+
+        if not force and self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME):
+            return
+
+        method = self._config.get(VKLASS_CONFKEY_AUTH_METHOD)
+        if method == VKLASS_AUTH_BANKID_QR:
+            await authenticate_bankid_qr(
+                aiohttp_session=self._aiohttp_session, 
+                authUrl=self._config.get(VKLASS_CONFKEY_AUTH_URL), 
+                qrCallback=self._config.get(VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE)    )
+        elif method == VKLASS_AUTH_BANKID_PERSONALNO:
+            await authenticate_bankid_peronno()
+        elif method == VKLASS_AUTH_USERNAME_PASSWORD:
+            await authenticate_userpass()
+        else:
+            raise ValueError(f"Invalid authentication method: {method}")
+
         return True
 
 

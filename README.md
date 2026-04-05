@@ -1,51 +1,37 @@
 ![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=)
 ![Version](https://img.shields.io/github/v/release/Kaptensanders/vklass)
-# VKLASS integration for HomeAssistant
+# VKLASS integration for Home Assistant
 
-This integration imports your Vklass calendar events into Home Assistant
+This integration imports Vklass calendar events into Home Assistant.
 
-## Authenticating VKLASS
+## Authentication
 
-VKlass has two auth modes:
+Vklass commonly uses one of these authentication modes:
 
 ### Username and password
-If this is the way you login, then you are in luck, just provide it when in the config flow.
-You can reconfigure later yf you change password
+If your district still allows username and password, you provide those credentials in the config flow and the integration handles the login flow internally.
 
 ### BankID
-This is the tricky part. BankId login cannot be automated, so you need to login manually. The integration will keep the vklass session alive for you, so hopefully you dont need to login that often.
-An enity - `binary_sensor.vklass_<name>_loggedin` - will let you know when you need to login again.<br>
-#### Anyway, this needs to happen:
-* You login using bankid -> end up in vklass
-* The login cookie/auth information needs to be accessible in HomeAssistant
+BankID is the primary target for this integration.
 
-#### And this can happen in the following ways:
-*   ***Direct access to the browser cookies***
-    <br>Eg, HA is running on the host where you logged in with the browser.
-    <br>In config flow select, "Host cookie access", and provice the path to the cookies file.
-    ```
-    /home/olle/.config/chromium/Default/Cookies
-    /home/olle/.config/google-chrome/Default/Cookies
-    /home/olle/.config/microsoft-edge/Default/Cookies
-    ```
-    Or whatever. And make sure the file is accessible to the user running Home Assistant.
-    <br>
-    ....or
-    <br>
+The intended design is that Home Assistant performs the real BankID-backed Vklass login flow itself. That means the integration should guide the login process and keep the authenticated Vklass session alive, instead of requiring you to fetch browser cookies manually.
 
-    If you are running **HA as container**, just mount the cookie file like <br>
-    ```
-        volumes:
-        - /home/olle/.config/chromium/Default/Cookies:/config/vklasscookie/Cookies:ro
-    ```
-    and provide `/config/vklasscookie/Cookies`<br>
-    <br>
+For BankID, the integration is being designed around:
+* A district-specific Vklass auth URL configured in the integration
+* A QR-based login flow for mobile BankID
+* A personal-number variant where supported
+* A logged-in status entity such as `binary_sensor.vklass_<name>_loggedin`
 
-*   ***The HA host is running headless***
-    <br>Here you have the following conflig flow options:
-    * *Manual Cookie Paste* - keep pasting the cookie content from browser (dev tools / cookie extention, etc) into `input_text.vklass_<name>_cookie` helper entity.
-    * *Rest API* - provide some `https://getmyvklasscookie` that can be queried for the cookie.
-    * *POST /api/vklass/set_cookie" - Push the cookie via HA API
+## Current project direction
 
-<br>
-Although there is some pain involved, this should allow you a way forward whatever infrastructure you have.
+The project is intentionally moving away from the older cookie-import approach.
+
+The following should be treated as abandoned design ideas, not the target user experience:
+* Reading browser cookie files
+* Pasting cookies into Home Assistant
+* Querying an external API that returns cookies
+* Pushing plaintext cookies into Home Assistant through a custom API
+
+## Scope for version 1.0
+
+Version 1.0 is focused on calendar import. The gateway and login flow are being built first so that later Home Assistant entities can depend on a real authenticated Vklass session rather than external cookie workarounds.

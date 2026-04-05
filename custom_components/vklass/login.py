@@ -1,107 +1,59 @@
-from abc import ABC, abstractmethod
-from datetime import datetime, date, timezone, timedelta
-from dateutil import tz, parser
-from logging import getLogger
-from collections.abc import Callable
-from bs4 import BeautifulSoup
-import re
-import json
-import asyncio
-import aiohttp
-from contextlib import suppress
+import importlib
+import pkgutil
+
+from .const import (
+    VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
+    VKLASS_CONFKEY_AUTH_URL,
+)
+
+def _load_auth_adapters():
+    adapters = []
+
+    package_name = f"{__package__}.auth_adapters"
+    package = importlib.import_module(package_name)
+
+    for _, module_name, _ in pkgutil.iter_modules(package.__path__):
+        module = importlib.import_module(f"{package_name}.{module_name}")
+
+        can_handle = getattr(module, "can_handle", None)
+        authenticate = getattr(module, "authenticate", None)
+
+        if callable(can_handle) and callable(authenticate):
+            adapters.append({
+                "name": module_name,
+                "can_handle": can_handle,
+                "authenticate": authenticate,
+            })
+
+    return adapters
+
+_ADAPTERS = _load_auth_adapters()
+
+async def authenticate(aiohttp_session, config):
+
+    url = config.get(VKLASS_CONFKEY_AUTH_URL)
+
+    for adapter in _ADAPTERS:
+        if adapter["can_handle"](url):
+            return await adapter["authenticate"](aiohttp_session, config)
+
+    raise RuntimeError(f"No auth adapter found for {url}")
 
 
-async def authenticate_bankid_qr(aiohttp_session, url:str, qrCallback) -> bool:
-    # real implementation on the way, from authenticate_bankid_stub
-    ...
-
-
-
-
-
-
-
-
-async def authenticate_bankid_stub(url:str) -> bool:
-    # just an example, not a real implementation, will be replaced by authenticate_bankid_qr
-    # stub flow
-    import requests
-    from bs4 import BeautifulSoup
-    from urllib.parse import urlparse, parse_qs
-
-    session = requests.Session()
-
-    # STEP 1 — load login page
-    url = "https://authpub.goteborg.se/sp/sps/eidpub/saml20/logininitial"
-    params = {
-        "RequestBinding": "HTTPPost",
-        "ResponseBinding": "HTTPPost",
-        "Target": "https://authpub.goteborg.se/idp/sps/auth?FedId=uuidc69b10fc-018d-1e46-bd45-84b46fd723a9"
-    }
-
-    r1 = session.get(url, params=params)
-    r1.raise_for_status()
-
-    # STEP 2 — simulate BankID button click
-    r2 = session.get(url, params={
-        **params,
-        "ITFIM_WAYF_IDP": "https://eid-connect.funktionstjanster.se/saml2/65ca0c705a557fb525eb8789"
-    })
-    r2.raise_for_status()
-
-    # STEP 3 — parse auto-submit form
-    soup = BeautifulSoup(r2.text, "html.parser")
-    form = soup.find("form")
-
-    action = form["action"]
-    payload = {
-        inp["name"]: inp.get("value", "")
-        for inp in form.find_all("input")
-        if inp.get("name")
-    }
-
-    # STEP 4 — POST SAML request
-    r3 = session.post(action, data=payload, allow_redirects=False)
-    r3.raise_for_status()
-
-    # STEP 5 — extract AID
-    location = r3.headers["Location"]
-    aid = parse_qs(urlparse(location).query)["aid"][0]
-
-    print("AID:", aid)
-
-    # STEP 6 — start BankID
-    session.get(
-        "https://eid-connect.funktionstjanster.se/id/bankid/auth",
-        params={"aid": aid, "id": "631992d934c51e4f39e150b9", "lang": "sv"}
+async def authenticate_bankid_qr(aiohttp_session, authUrl, qrCallback=None):
+    return await authenticate(
+        aiohttp_session,
+        {
+            VKLASS_CONFKEY_AUTH_URL: authUrl,
+            VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE: qrCallback,
+        },
     )
 
-    # STEP 7 — fetch QR
-    qr = session.get(
-        "https://eid-connect.funktionstjanster.se/id/bankid/qr",
-        params={"aid": aid}
-    ).text
 
-    print("QR string:", qr)
-
-    # STEP 8 — poll status
-    status = session.get(
-        "https://eid-connect.funktionstjanster.se/id/bankid/status",
-        params={"aid": aid}
-    ).json()
-
-    print(status)
+async def authenticate_bankid_peronno(*_args, **_kwargs):
+    raise NotImplementedError("BankID personal number login not implemented")
 
 
-async def authenticate_bankid_peronno(url:str, qrCallback) -> bool:
-    ...
-
-async def authenticate_userpass(url:str, username:str, password:str) -> bool:
-    ... 
-
-
-
-
-
-
+async def authenticate_userpass(*_args, **_kwargs):
+    raise NotImplementedError("Username/password login not implemented")
 

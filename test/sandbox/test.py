@@ -12,28 +12,42 @@ from vklassgateway import ( # noqa: E402
     VKLASS_AUTH_BANKID_PERSONALNO,
 
     VKLASS_CONFKEY_AUTH_METHOD,
+    VKLASS_CONFKEY_AUTH_URL,
     VKLASS_CONFKEY_PERSONNO,
     VKLASS_CONFKEY_USERNAME,
     VKLASS_CONFKEY_PASSWORD,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
+    VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
 )
 
+async def loadAuthFlow(url):
+    
+    if "authpub.goteborg.se" in url:
+        return await loadBankIdAuthFlow(url)
+        auth.vklass.se/bankid
+
+
+    return authData
+
+
 logging.basicConfig(level=logging.INFO)
     
-AUT_COOKIE = "CfDJ8AF1v64zmWNJt9xTu8U9aMq0MxPGTrxvUicvW-6_vnAF7PkQJsd0pifUef3dpk-1cItGJkGclLLcYoYuyaqcOnziGoJE_tHOP5VOYgRQnrA0f6nSVQSi1k3ZLOpoVlWYQ6UsahiVObDevX7E8w_nSaS9fVXFRDtMTBuveI5O5owbo9k-9e_r-aueZYm78z5GJxdIQNF0t6_qBN3Gs0IpklnQXkEvTbOHRszfdnoTUMLm0ZsI9IDf0T7D_JJjsmWodp1UrWGB1etvZYaXYXTV3eEGpNipLwKfa0ANcH-JUAT73_jMgZ3zayDEJzdVCRqfJBuLmcbSHwuJnAuXTLNZyhRSVxS51qmidbALZF7M48F55H07EtWy49sW4suKqh2bgqvo5s9PQD4Jxswkk3ZVURFO8TThVohazxEam-3eJTsNa5WVDRfekFKb26iPQeH5EEVjO-jiIESzzzaUFdTlMvMiyNoCr9y6op6mVdHBxFUy8HMuAOQzEO2mKgsD8VDx3c-tsn7GjBS4gFKR82c4dMoeqlMCgzARRQaaAMPCvhD27LxLIittA6qKr9YbWPyq1s1ybRFDuomOUMjNQiBPAZEjsNEzWEPkX5EKBJM_6sqr1dFCGR-MHAyk8Qwy9brEb-NjFf00I9hNDH3WpfrGs9CPCwF6zPEDFdEbSsNnGHgyaX9G641oW-aIrMKFRvX2ADJ1n7Z_ZGQpDFb1KyV9nkwt_9MBtTnwkG3acQqjAq-aiOJ2zoe2zIGSZcSjd3qkJkkLzjlUooCXDTO15I2XUL7JS830IggEX4DL10ka4pTSlg0DfphSNcQvmR0n5xrq84o6iYBPeaj5jA4C8rq9NhYu7vF-ym35sylOwXzINzgKKD1N9X-v4DX7Pp5xdftUdNtLrFJ4b6yVw-ogYIvNavjs73ogaJrtlptBK9qbbELesckRFSGiSiiU4jrkYQHoiwfcvLw3aS5CtH4p8AyhT4aockCRTUrJBwqSU5Om0mgL8DG8T_3NCW0Nz9Wtw7rw1rkT4FA08jVhm0AxYJEA1exFGIj1clxDONR23iMC2dcN0J6dpaRAbQVenHp6DgKilHCiQGQz20DwOImj8abCXN2Inr9wZ9rxWpl14T5cgeA1DBIJUkzdlHpUbqE4mYjrTFDsetZ7jSK0DeRVM6jzS8BuXM2L-9DJCRHTdT6DWF0SqssPc4Tx6J1zmhOc54t3pPpGzsMfX3UuUHgc24wVVurjZE5AU4DkndOyPOw9IAmh8ZYk6zPo-ZbaSbkEMWO3-IAgVdYj9ip9V8GvTIvShgTiF4UZ0mS_LjqK2BH55i0PQBIXQohnyh06_RjK-gy_-BtLldrCrlIABcKAXuVnABhGco3NhSu4gSzPhkghXMXap0TQkb-wcymwYD2hHbQgjeQflRL_5KNcrCInEGL-rHLK4wtFXnrBxALcx-4UgzLuwuNiO5iD-aE-47uxQ4NDGu0n-BDtBXGhnVL4K14Ycql4Pte8aovPyqXi6vMwZUtfFBwwknjYRk2XqbRJyirt7CYziE7vM8nd-yqtqZzu8MKoyxSxJW7fORRUxS1UKGqwzgs7fyIYqC4TKN8SSdY3E-bvIAaDaoc_HLB-OCTqWic"
+AUT_COOKIE = "__DISABLED__"
 COOKIE_FILE = "/workspaces/vklass/tests/sandbox/cookie.txt"
 
 async def onAuthFail(msg:str = None):
     print (f"onAuthFail callback {msg}")
-
 
 async def onCookieUpdate (cookie):
     # save to cookie file, for use on load
     with open(COOKIE_FILE, "w") as f:
         f.write(cookie)
     print ("onCookieUpdate callback, new cookie saved to file")
+
+async def onQrUpdate (qrCode:str):
+    print (f"QR code update: {qrCode}")
 
 
 def loadCookieFromFile():
@@ -60,15 +74,19 @@ config = {
 configs = {
     "manual" : {
         VKLASS_CONFKEY_AUTH_METHOD                  : VKLASS_AUTH_BANKID_QR,
+        VKLASS_CONFKEY_AUTH_URL                     : "https://authpub.goteborg.se/sp/sps/eidpub/saml20/logininitial?RequestBinding=HTTPPost&ResponseBinding=HTTPPost&Target=https%3A%2F%2Fauthpub.goteborg.se%2Fidp%2Fsps%2Fauth%3FFedId%3Duuidc69b10fc-018d-1e46-bd45-84b46fd723a9",
         VKLASS_CONFKEY_USERNAME                     : None,
         VKLASS_CONFKEY_PASSWORD                     : None,
         VKLASS_CONFKEY_KEEPALIVE_MIN                : 1,
+        VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE           : onQrUpdate,
         VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB        : onAuthFail,
         VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  : onCookieUpdate,
     },
 }
 
 default_config = "manual"
+
+
 
 async def main ():
 
@@ -96,12 +114,15 @@ async def main ():
 
         stop_event = None 
 
+        calStartDate = date.today().isoformat()
+        calEndDate = (date.today() + timedelta(weeks=4)).isoformat()
+        calendar = await gw.getCalendar(calStartDate, calEndDate)
+        exit(0)
+
         if keepalive:
             stop_event = asyncio.Event()
             gw.startKeepAlive()
 
-        calStartDate = date.today().isoformat()
-        calEndDate = (date.today() + timedelta(weeks=4)).isoformat()
 
         calendar = await gw.getCalendar(calStartDate, calEndDate)
 
