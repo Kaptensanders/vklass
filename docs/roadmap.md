@@ -32,6 +32,8 @@ Status: **In Progress**
 
 ### 3. Home Assistant Vklass integration, phase 1
 Status: **Current**
+* **Home Assistant integration BASE** design implementation only
+* Some stub code exist as example, design pattern guidance, replace with real implementation 
 * Basic robust integration design, shared vklassgateway and the Vklass device
 * Config flow for supporting auth methods (implied in const.py)
 * Vklass authenticated binary sensor
@@ -45,6 +47,7 @@ Status: **Pending**
 
 ### 5. The VklassGateway component - completion and refinement
 Status: **Pending**  
+* better _step3_poll_qr status handling in goteborg_bankid.py when we can try better with the HA integration
 * consistant and production grade handling of auth adapters. Documented and well designed. 
 * Implement vklass BankID personal-number authentication (vklass_bankid.py)
 * Implement vklass username/password authentication (vklass_userpass.py)

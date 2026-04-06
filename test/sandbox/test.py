@@ -13,7 +13,7 @@ from vklassgateway import ( # noqa: E402
     VKLASS_CONFKEY_PASSWORD,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
     VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE,
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
 )
 
@@ -22,8 +22,8 @@ logging.basicConfig(level=logging.INFO)
 AUT_COOKIE = "__DISABLED__"
 COOKIE_FILE = "/workspaces/vklass/tests/sandbox/cookie.txt"
 
-async def onAuthFail(msg:str = None):
-    print (f"onAuthFail callback {msg}")
+async def onAuthUpdate(state:str, message:str|None = None):
+    print (f"onAuthUpdate callback {state}: {message}")
 
 async def onCookieUpdate (cookie):
     # save to cookie file, for use on load
@@ -50,7 +50,7 @@ config = {
     VKLASS_CONFKEY_USERNAME                 # username (VKLASS_AUTH_USERNAME_PASSWORD)
     VKLASS_CONFKEY_PASSWORD                 # password (VKLASS_AUTH_USERNAME_PASSWORD)
     VKLASS_CONFKEY_KEEPALIVE_MIN            # minutes between keepalive calls
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB    # async callback function to notify when Authentication has failed, and the VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD did not resolve auth (manual action needed, BankId login etc)
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE     # async callback called on auth events
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, plaintext cookie as input parameter
 }
 '''
@@ -62,7 +62,7 @@ configs = {
         VKLASS_CONFKEY_PASSWORD                     : None,
         VKLASS_CONFKEY_KEEPALIVE_MIN                : 1,
         VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE           : onQrUpdate,
-        VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB        : onAuthFail,
+        VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE         : onAuthUpdate,
         VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  : onCookieUpdate,
     },
 }
@@ -91,9 +91,9 @@ async def main ():
         gw.DUMP_TO_FILE = True
         if cookie := loadCookieFromFile():
             print(f"Loaded cookie from file {COOKIE_FILE}")
-            gw.setAuthCookie(cookie)
+            await gw.setAuthCookie(cookie)
         else:
-            gw.setAuthCookie(AUT_COOKIE)
+            await gw.setAuthCookie(AUT_COOKIE)
 
         stop_event = None 
 

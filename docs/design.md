@@ -87,11 +87,25 @@ The following is no longer part of the active design:
 If Vklass or district-specific behavior later forces a fallback strategy, it should be treated as a new design decision rather than assumed as part of the main architecture.
 
 
-## Home Assistant integration
+## Home Assistant integration BASE
 * Full Home Assistant integration with entities tied to a device
 * Config flow supporting config.py implied settings/keys
 * Vklass device
-* Vklass authenticated binary sensor, reflecting the current auth state. The binary_sensor implementation should also hold the qr_update_cb function, and the function should update the "qr_code" attribute then qr_update_cb function is called.
+* Integration should supply a function for the VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE config entry, that serializes updated auth cookies to HA's storage
+* Integration shall restore latest saved auth cookie from HA storage on HA restart/load using VklassGateWay.setAuthCookie  
+* expose vklass.set_auth_cookie as service (calling VklassGateway.setAuthCook())
+* expose vklass.authenticate as service (calling VklassGateway.authenticate())
+* create a sensor.vklass_<name>_auth sensor, reflecting the current auth state.
+  * Sensor state in inprogress|success|fail (const.AUTH_STATUS_XX)
+  * Sensor should hold the QR code callback function used in auth adapters. Function shall update qr_code attribute
+  * Sensor shall hold the auth_status callback function used by VklassGateway.authenticate to communicate state and message.
+  * Attributes:
+    * auth url (as set in config flow)
+    * qr_code - exist only after callback function set's it
+    * message - auth error if
+    * last_success - last successful authentication
+
+## Home Assistant integration EXTENDED
 * Vklass calendar entities, split by student and later by event type as designed
 * UI support for BankID login interaction, primarily QR presentation and login-state feedback
 

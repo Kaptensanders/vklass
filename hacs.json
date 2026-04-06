@@ -1,7 +1,7 @@
 {
-    "name": "Vklass Integration",
+    "name": "Vklass",
     "content_in_root": false,
     "country": ["SE"],
     "render_readme": true,
     "homeassistant": "2025.10.0"
-  }
+}
