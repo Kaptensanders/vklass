@@ -1,17 +1,16 @@
 {
-    "domain": "skolmat",
-    "name": "Skolmat",
+    "domain": "vklass",
+    "name": "Vklass",
     "codeowners": ["@kaptensanders"],
     "config_flow": true,
     "dependencies": [],
-    "documentation": "https://github.com/Kaptensanders/skolmat",
+    "documentation": "https://github.com/Kaptensanders/vklass",
     "integration_type": "service",
     "iot_class": "cloud_polling",
-    "issue_tracker": "https://github.com/Kaptensanders/skolmat/issues",
+    "issue_tracker": "https://github.com/Kaptensanders/vklass/issues",
     "requirements": [
-        "feedparser>=6.0.0",
         "beautifulsoup4>=4.12.2",
         "python-dateutil>=2.8.2"
     ],
-    "version": "3.1.0"
+    "version": "1.0.0"
 }

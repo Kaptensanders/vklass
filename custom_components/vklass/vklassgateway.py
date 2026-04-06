@@ -1,13 +1,10 @@
 from abc import ABC, abstractmethod
-from datetime import datetime, date, timezone, timedelta
-from dateutil import tz, parser
 from logging import getLogger
-from collections.abc import Callable
-from typing import TypedDict, TypeAlias, Any
-from pathlib import Path
 from bs4 import BeautifulSoup
 from http.cookies import SimpleCookie
 from yarl import URL
+import importlib
+import pkgutil
 import re
 import json
 import asyncio
@@ -20,10 +17,15 @@ from .const import (
     VKLASS_CONFKEY_PASSWORD,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
     VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE,
+    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE,
+
+    AUTH_STATUS_INPROGRESS,
+    AUTH_STATUS_SUCCESS,
+    AUTH_STATUS_FAIL
 )
-from .login import authenticate
+
+log = getLogger(__name__)
 
 '''
 config = {
@@ -36,7 +38,6 @@ config = {
     VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, cookie value as input parameter    
 }
 '''
-
 
 _EPKEY_URL              = "url"
 _EPKEY_SUCCCESS_CODE    = "success_code"
@@ -138,8 +139,33 @@ class VklassSession(ObjBase):
             "referer": f"{_VKLASS_URL_BASE}/",
             "user-agent": "Mozilla/5.0",
         }
+        self._auth_adapter = self._load_auth_adapter()
 
-    def setAuthCookie(self, value:str):
+    def _load_auth_adapter(self):
+
+        package_name = f"{__package__}.auth_adapters"
+        package = importlib.import_module(package_name)
+        adapter = None
+        authUrl = self._config.get(VKLASS_CONFKEY_AUTH_URL)
+        for _, module_name, _ in pkgutil.iter_modules(package.__path__):
+            module = importlib.import_module(f"{package_name}.{module_name}")
+
+            can_handle = getattr(module, "can_handle", None)
+            if not can_handle(authUrl):
+                continue
+
+            adapter = {
+                "name": module_name,
+                "is_interractive": getattr(module, "is_interractive"),
+                "authenticate": getattr(module, "authenticate"),
+            }
+
+        if not adapter:
+            log.warning(f"No Vklass auth adapter found for {authUrl}")   
+
+        return adapter
+
+    async def setAuthCookie(self, value:str):
 
         if not value:
             return
@@ -158,16 +184,57 @@ class VklassSession(ObjBase):
             response_url=URL(_VKLASS_URL_BASE),
         )
 
+        self._setAuthSuccess()
+        await self._onAuthUpdate(AUTH_STATUS_SUCCESS, "Auth cookie set manually")
+
+
     def isAuthFail (self) -> bool:
         return self._authFail
 
+    async def _onAuthUpdate(self, state:str, message:str|None = None):
+        log.info(message)
+        if fn := self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE, None):
+            await fn(state, message)
+        
     async def _setAuthFail(self):
         self._authFail = True
-        if fn := self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB, None):
-            await fn()
 
     def _setAuthSuccess(self):
         self._authFail = False
+
+
+    async def authenticate (self, force:bool = False, interactive:bool = False) -> bool:
+
+        if not force and self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME):
+            return True
+
+        if not self._auth_adapter:
+            msg = "No authentication adapter available, cannot authenticate"
+            await self._onAuthUpdate(AUTH_STATUS_FAIL, msg)
+            raise RuntimeError(msg)
+
+        if self._auth_adapter["is_interractive"]() and not interactive:     
+            msg = f"Authentication adapter {self._auth_adapter['name']} requires interactive authentication"
+            await self._onAuthUpdate(AUTH_STATUS_FAIL, msg)
+            raise RuntimeError(msg)
+
+        await self._onAuthUpdate(AUTH_STATUS_INPROGRESS, "Authentication process started")
+
+        auth = await self._auth_adapter["authenticate"](self._aiohttp_session, self._config)
+        if not auth:
+            await self._onAuthUpdate(AUTH_STATUS_FAIL, "Authentication failed, check logs")
+            await self._setAuthFail()
+            raise RuntimeError("Vklass authentication failed")
+
+        # _aiohttp_session cookie jar should now be updated with the new auth cookie, trigger the async callback
+        cb = self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE, None)
+        if cb:
+            cookie = self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME)
+            if cookie:
+                await cb(cookie.value)
+
+        await self._onAuthUpdate(AUTH_STATUS_SUCCESS, "Vklass authentication successful")
+        return True
 
     async def _handleResponseCookies(self, response_cookies) -> None:
 
@@ -186,7 +253,7 @@ class VklassSession(ObjBase):
 
         ep = _ENDPOINTS[ep_key]
 
-        await self._authenticate(force=self._reAuth)
+        await self.authenticate(force=self._reAuth)
         request_method = self._aiohttp_session.get if data is None else self._aiohttp_session.post
         request_kwargs = {
             "headers": self._headers,
@@ -249,25 +316,6 @@ class VklassSession(ObjBase):
                 await self._dumpData(content, f"{ep_key}.html")
 
         return content
-
-    async def _authenticate (self, force:bool = False):
-
-        if not force and self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME):
-            return
-
-        auth = await authenticate(self._aiohttp_session, self._config)
-        if not auth:
-            await self._setAuthFail()
-            raise RuntimeError("Vklass authentication failed")
-
-        # _aiohttp_session cookie jar should now be updated with the new auth cookie, trigger the async callback
-        cb = self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE, None)
-        if cb:
-            cookie = self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME)
-            if cookie:
-                await cb(cookie.value)
-
-        return True
 
     async def _keepAliveLoop(self, loopLen:int):
         interval_seconds = int(loopLen) * 60

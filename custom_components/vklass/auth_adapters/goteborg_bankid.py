@@ -21,6 +21,9 @@ log = getLogger(__name__)
 def can_handle(url:str) -> bool:
     return "authpub.goteborg.se" in url  # = BankID auth for Göteborg
 
+def is_interractive() -> bool:
+    # return false for now, change to True later
+    return False
 
 def _snippet(value, limit: int = 240) -> str:
     text = str(value).replace("\n", "\\n").replace("\r", "\\r")
@@ -298,6 +301,9 @@ async def _step3_poll_qr(session, auth, qr_callback):
             log.info (f"BankID auth completed with status={status}, hintCode={hint_code}, message={message}, substatus={substatus}")
             return
 
+        # TODO, handle other status
+
+
         if status != previous_status:
             log.info ("Awaiting BankID app authentication... ")
 
@@ -333,6 +339,8 @@ async def _step3_poll_qr(session, auth, qr_callback):
 
 
         previous_status = status
+
+
 
 
 # ------------------------------------------------------------
