@@ -12,15 +12,17 @@ from vklassgateway import ( # noqa: E402
     VKLASS_CONFKEY_USERNAME,
     VKLASS_CONFKEY_PASSWORD,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
-    VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE
+
+    VKLASS_HANDLER_ON_AUTH_EVENT,
+    VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
+    VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE,
+
 )
 
 logging.basicConfig(level=logging.INFO)
     
 AUT_COOKIE = "__DISABLED__"
-COOKIE_FILE = "/workspaces/vklass/tests/sandbox/cookie.txt"
+COOKIE_FILE = "/workspaces/vklass/test/sandbox/cookie.txt"
 
 async def onAuthUpdate(state:str, message:str|None = None):
     print (f"onAuthUpdate callback {state}: {message}")
@@ -50,8 +52,6 @@ config = {
     VKLASS_CONFKEY_USERNAME                 # username (VKLASS_AUTH_USERNAME_PASSWORD)
     VKLASS_CONFKEY_PASSWORD                 # password (VKLASS_AUTH_USERNAME_PASSWORD)
     VKLASS_CONFKEY_KEEPALIVE_MIN            # minutes between keepalive calls
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE     # async callback called on auth events
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, plaintext cookie as input parameter
 }
 '''
 
@@ -60,16 +60,11 @@ configs = {
         VKLASS_CONFKEY_AUTH_URL                     : "https://authpub.goteborg.se/sp/sps/eidpub/saml20/logininitial?RequestBinding=HTTPPost&ResponseBinding=HTTPPost&Target=https%3A%2F%2Fauthpub.goteborg.se%2Fidp%2Fsps%2Fauth%3FFedId%3Duuidc69b10fc-018d-1e46-bd45-84b46fd723a9",
         VKLASS_CONFKEY_USERNAME                     : None,
         VKLASS_CONFKEY_PASSWORD                     : None,
-        VKLASS_CONFKEY_KEEPALIVE_MIN                : 1,
-        VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE           : onQrUpdate,
-        VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE         : onAuthUpdate,
-        VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  : onCookieUpdate,
+        VKLASS_CONFKEY_KEEPALIVE_MIN                : 1
     },
 }
 
 default_config = "manual"
-
-
 
 async def main ():
 
@@ -86,7 +81,13 @@ async def main ():
             confName = sys.argv[1]
 
     async with aiohttp.ClientSession() as session:
+
         gw = VklassGateway(configs[confName], session)
+        gw.registerHandler (VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE, onQrUpdate)
+        gw.registerHandler (VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE, onCookieUpdate)
+        gw.registerHandler (VKLASS_HANDLER_ON_AUTH_EVENT, onAuthUpdate)
+
+
         gw.DEBUG = True
         gw.DUMP_TO_FILE = True
         if cookie := loadCookieFromFile():

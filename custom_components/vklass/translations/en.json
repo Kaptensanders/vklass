@@ -2,81 +2,60 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add Skolmat",
+        "title": "Configure Vklass",
+        "description": "Welcome to Vklass. Start by choosing a name for this Vklass device in Home Assistant.",
         "data": {
-          "name": "School name",
-          "url": "Menu URL",
-          "lunch_begin": "Lunch start time (HH:MM)",
-          "lunch_end": "Lunch end time (HH:MM)"
+          "name": "Vklass device name"
         }
       },
-      "configure": {
-        "title": "Configure daily summary",
-        "description": "Configure the menu summary that will be displayed as calendar entries and sensor state. Switch between available dates and make sure everything looks good.\n\n*Press submit/save to see changes.\n*Check I'm done configuring when you are happy.",
+      "auth": {
+        "title": "Configure Vklass login credentials",
+        "description": "Add the login information you normally use the authentication URL. If you use BankID QR code login you normally would not enter any information here.",
         "data": {
-          "selected_date": "Date",
-          "display_input": "Input data (read-only)",
-          "display_summary": "State and Calendar summary (read-only)",
-          "meals_selected": "Meals found, select to filter (none = all, always)",
-          "exclude_label": "Exclude dishes containing:",
-          "exclude_regex": "Exclude keywords (press Enter, /regex/ optional)",
-          "prefer_label": "Prefer dishes containing (only have effect if Max dishes is set)",
-          "prefer_regex": "Prefer keywords (press Enter, /regex/ optional)",
-          "max_entries": "Max dishes to merge (0 or blank = unlimited)",
-          "processor_label": "Custom data processor (advanced)",
-          "processor_file": "Processor file (under processors/)",
-          "processor_fn": "Processor function name",
-          "reload_processor": "Reload menu + processor",
-          "done_configuring": "I'm done configuring"
+          "auth_url": "Authentication URL",
+          "username": "Username",
+          "password": "Password",
+          "personno": "Personal number"
+        }
+      },
+      "manual_cookie_warning": {
+        "title": "Unsupported authentication URL",
+        "description": "No supported Vklass authentication adapter was found for `{auth_url}`.\n\nYou can continue anyway, but then `vklass.set_auth_cookie` must be used manually with the `se.vklass.authentication` cookie value from a logged in browser.\n\nConfirm below to continue with manual cookie handling, or go back and change the authentication URL.",
+        "data": {
+          "unsupported_auth_url_action": "Next step"
         }
       }
     },
     "error": {
-      "invalid_url": "Invalid URL",
-      "invalid_lunch_interval": "Lunch end time must be after lunch start time",
-      "menu_fetch_failed": "Failed to fetch menu. Check URL, check logs.",
-      "processor_missing_fields": "Provide both processor file and function name.",
-      "processor_file_missing": "Processor file not found under processors/.",
-      "processor_import_failed": "Processor module could not be loaded.",
-      "processor_fn_missing": "Processor function not found or not callable."
+      "name_exists": "A Vklass entry with this name already exists."
     }
   },
   "options": {
     "step": {
-      "configure": {
-        "title": "Configure summary",
-        "description": "Configure the menu summary that will be displayed as calendar entries and sensor state. Switch between available dates and make sure everything looks good.\n\n*Press submit/save to see changes.\n*Check I'm done configuring when you are happy.",
+      "init": {
+        "title": "Configure Vklass login credentials",
+        "description": "Add the login information you normally use the authentication URL. If you use BankID QR code login you normally would not enter any information here.",
         "data": {
-          "selected_date": "Date",
-          "display_input": "Input data (read-only)",
-          "display_summary": "State and Calendar summary (read-only)",
-          "meals_selected": "Meals found, select to filter (none = all, always)",
-          "exclude_label": "Exclude dishes containing:",
-          "exclude_regex": "Exclude keywords (press Enter, /regex/ optional)",
-          "prefer_label": "Prefer dishes containing (only have effect if Max dishes is set)",
-          "prefer_regex": "Prefer keywords (press Enter, /regex/ optional)",
-          "max_entries": "Max dishes to merge (0 or blank = unlimited)",
-          "processor_label": "Custom data processor (advanced)",
-          "processor_file": "Processor file",
-          "processor_fn": "Processor function name",
-          "reload_processor": "Reload menu + processor on submit",
-          "done_configuring": "I'm done configuring"
+          "auth_url": "Authentication URL",
+          "username": "Username",
+          "password": "Password",
+          "personno": "Personal number"
+        }
+      },
+      "manual_cookie_warning": {
+        "title": "Unsupported authentication URL",
+        "description": "No supported Vklass authentication adapter was found for `{auth_url}`.\n\nYou can continue anyway, but then `vklass.set_auth_cookie` must be used manually with the `se.vklass.authentication` cookie value from a logged in browser.\n\nConfirm below to continue with manual cookie handling, or go back and change the authentication URL.",
+        "data": {
+          "unsupported_auth_url_action": "Next step"
         }
       }
-    },
-    "error": {
-      "processor_missing_fields": "Provide both processor file and function name.",
-      "processor_file_missing": "Processor file not found under processors/.",
-      "processor_import_failed": "Processor function could not be loaded.",
-      "processor_fn_missing": "Processor function not found or not callable."
     }
   },
-  "entity": {
-    "sensor": {
-      "menu": {
-        "state": {
-          "no_food_today": "No menu today"
-        }
+  "selector": {
+    "unsupported_auth_url_action": {
+      "options": {
+        "edit_auth_url": "Go back and edit authentication URL",
+        "continue_manual_cookie": "Continue with manual cookie handling"
       }
     }
   }

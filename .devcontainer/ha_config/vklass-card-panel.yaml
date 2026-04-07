@@ -1,0 +1,16 @@
+title: Vklass
+
+views:
+  - title: Vklass
+    path: vklass_home
+    cards:
+      - type: vertical-stack
+        title: Legacy
+        cards:
+          - type: custom:vklass-auth-card
+            entity: sensor.vklass_sandberg_vklass_auth
+      - type: vertical-stack
+        title: Ny
+        cards:
+          - type: custom:vklass-auth-card
+            entity: sensor.vklass_sandberg_ny_auth

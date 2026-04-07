@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import inspect
 from logging import getLogger
 from bs4 import BeautifulSoup
 from http.cookies import SimpleCookie
@@ -16,13 +17,19 @@ from .const import (
     VKLASS_CONFKEY_USERNAME,
     VKLASS_CONFKEY_PASSWORD,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
-    VKLASS_CONFKEY_ASYNC_ON_QR_UPDATE,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE,
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE,
+
+    VKLASS_HANDLER_ON_AUTH_EVENT,
+    VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE,
+    VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
 
     AUTH_STATUS_INPROGRESS,
     AUTH_STATUS_SUCCESS,
-    AUTH_STATUS_FAIL
+    AUTH_STATUS_FAIL,
+
+    AUTH_METHOD_BANKID_QR,
+    AUTH_METHOD_BANKID_PERSONNO,
+    AUTH_METHOD_USERPASS,
+    AUTH_METHOD_MANUAL_COOKIE    
 )
 
 log = getLogger(__name__)
@@ -34,8 +41,6 @@ config = {
     VKLASS_CONFKEY_USERNAME                     # username (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
     VKLASS_CONFKEY_PASSWORD                     # password (VKLASS_COOKIE_RETRIVAL_METHOD_LOGIN)
     VKLASS_CONFKEY_KEEPALIVE_MIN                # minutes between keepalive calls
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_FAIL_CB        # async callback function to notify when Authentication has failed, and the VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD did not resolve auth (manual action needed, BankId login etc)
-    VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE  # async callback function to notify when the vklass cookies was updated due to a server set-cookie response, cookie value as input parameter    
 }
 '''
 
@@ -96,8 +101,44 @@ def _get_ep_url (endpoint:str):
         return _VKLASS_URL_BASE + ep[_EPKEY_URL]
     return ep[_EPKEY_URL]
 
-
 log = getLogger(__name__)
+
+_ADAPTER_ATTR_NAME="name"
+_ADAPTER_ATTR_CAN_HANDLE="can_handle"
+_ADAPTER_ATTR_DESCRIPTION="ADAPTER_DESCRIPTION"
+_ADAPTER_ATTR_AUTH_INTERACTIVE="ADAPTER_AUTH_INTERACTIVE"
+_ADAPTER_ATTR_AUTH_METHOD="ADAPTER_AUTH_METHOD"
+_ADAPTER_ATTR_AUTHENTICATE="authenticate"
+
+def load_auth_adapters() -> list | None:
+
+    adapters = []
+    package_name = f"{__package__}.auth_adapters"
+    package = importlib.import_module(package_name)
+
+    for _, module_name, _ in pkgutil.iter_modules(package.__path__):
+        module = importlib.import_module(f"{package_name}.{module_name}")
+
+        adapters.append ({
+            _ADAPTER_ATTR_NAME              : module_name,
+            _ADAPTER_ATTR_DESCRIPTION       : getattr(module, _ADAPTER_ATTR_DESCRIPTION),
+            _ADAPTER_ATTR_CAN_HANDLE        : getattr(module, _ADAPTER_ATTR_CAN_HANDLE),
+            _ADAPTER_ATTR_AUTH_METHOD       : getattr(module, _ADAPTER_ATTR_AUTH_METHOD),
+            _ADAPTER_ATTR_AUTH_INTERACTIVE  : getattr(module, _ADAPTER_ATTR_AUTH_INTERACTIVE),
+            _ADAPTER_ATTR_AUTHENTICATE      : getattr(module, _ADAPTER_ATTR_AUTHENTICATE)
+        })
+
+    return adapters
+
+_AUTH_ADAPTERS = load_auth_adapters()
+
+def get_auth_adapter(auth_url: str | None) -> dict | None:
+    """Return the first auth adapter that can handle the configured URL."""        
+    for adapter in _AUTH_ADAPTERS:
+        if adapter["can_handle"](auth_url):
+            return adapter
+    return None
+
 
 class ObjBase(ABC):
     DEBUG = False
@@ -124,46 +165,79 @@ class ObjBase(ABC):
 
 class VklassSession(ObjBase):
 
-    def __init__(self, config, aiohttp_session):
+    def __init__(self, config):
         super().__init__()
         self._config = config
-        self._aiohttp_session = aiohttp_session
         self._reAuth = False
         self._authFail = False
         self._students = {}
         self._keepAliveTask = None
-        self._headers = {
-            "accept": "*/*",
-            "content-type": "application/x-www-form-urlencoded",
-            "origin": _VKLASS_URL_BASE,
-            "referer": f"{_VKLASS_URL_BASE}/",
-            "user-agent": "Mozilla/5.0",
-        }
         self._auth_adapter = self._load_auth_adapter()
+        self._async_handlers = {}
+        self._aiohttp_session = self._initAioHttpSession()
+
+
+    def _initAioHttpSession (self):
+        timeout = aiohttp.ClientTimeout(total=15)
+        return aiohttp.ClientSession(
+            cookie_jar=aiohttp.CookieJar(quote_cookie=False),
+            requote_redirect_url=False,
+            timeout=timeout,
+            raise_for_status=False,
+            headers={
+                "accept": "*/*",
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": _VKLASS_URL_BASE,
+                "referer": f"{_VKLASS_URL_BASE}/",
+                "user-agent": "Mozilla/5.0",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+            }
+        )
+
+    # call for graceful unload
+    async def shutdown (self):
+        await self.stopKeepAlive()
+        if not self._aiohttp_session.closed:
+            await self._aiohttp_session.close()
+
 
     def _load_auth_adapter(self):
-
-        package_name = f"{__package__}.auth_adapters"
-        package = importlib.import_module(package_name)
-        adapter = None
         authUrl = self._config.get(VKLASS_CONFKEY_AUTH_URL)
-        for _, module_name, _ in pkgutil.iter_modules(package.__path__):
-            module = importlib.import_module(f"{package_name}.{module_name}")
-
-            can_handle = getattr(module, "can_handle", None)
-            if not can_handle(authUrl):
-                continue
-
-            adapter = {
-                "name": module_name,
-                "is_interractive": getattr(module, "is_interractive"),
-                "authenticate": getattr(module, "authenticate"),
-            }
-
+        adapter = get_auth_adapter(authUrl)
         if not adapter:
             log.warning(f"No Vklass auth adapter found for {authUrl}")   
 
         return adapter
+
+    # returns auth_method, is_interactive
+    def getAuthMethod (self):
+        
+        if not self._auth_adapter:
+            return AUTH_METHOD_MANUAL_COOKIE, True 
+
+        return self._auth_adapter[_ADAPTER_ATTR_AUTH_METHOD], self._auth_adapter[_ADAPTER_ATTR_AUTH_INTERACTIVE]
+
+
+    def registerHandler (self, handlerKey:str, coroutine):
+
+        if not inspect.iscoroutinefunction(coroutine):
+            raise ValueError("registerHandler: argument must be coroutine")
+
+        if handlerKey not in [VKLASS_HANDLER_ON_AUTH_EVENT, VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE, VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE]:
+            raise KeyError(f"handlerKey: {handlerKey} not recognized")
+
+        if handlerKey not in self._async_handlers:
+            self._async_handlers[handlerKey] = []
+
+        self._async_handlers[handlerKey].append(coroutine)
+
+    def getHandlers(self, handlerKey:str) -> list:
+        
+        if handlerKey not in self._async_handlers:
+            return []
+        return self._async_handlers[handlerKey]
+
 
     async def setAuthCookie(self, value:str):
 
@@ -185,6 +259,7 @@ class VklassSession(ObjBase):
         )
 
         self._setAuthSuccess()
+        await self._notifyAuthCookieUpdate()
         await self._onAuthUpdate(AUTH_STATUS_SUCCESS, "Auth cookie set manually")
 
 
@@ -193,9 +268,10 @@ class VklassSession(ObjBase):
 
     async def _onAuthUpdate(self, state:str, message:str|None = None):
         log.info(message)
-        if fn := self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_UPDATE, None):
+        handlers = self.getHandlers(VKLASS_HANDLER_ON_AUTH_EVENT)
+        for fn in handlers:
             await fn(state, message)
-        
+
     async def _setAuthFail(self):
         self._authFail = True
 
@@ -203,7 +279,16 @@ class VklassSession(ObjBase):
         self._authFail = False
 
 
-    async def authenticate (self, force:bool = False, interactive:bool = False) -> bool:
+    async def authenticate (self, force:bool = False, allow_interactive:bool = False) -> bool:
+
+        # callback helper auth adaptors that need to propagate qr codes
+        async def _notifyQrCodeUpdate(qrCode:str):
+            handlers = self.getHandlers(VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE)
+            if not handlers:
+                return
+            
+            for fn in handlers:
+                await fn(qrCode)
 
         if not force and self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME):
             return True
@@ -213,40 +298,76 @@ class VklassSession(ObjBase):
             await self._onAuthUpdate(AUTH_STATUS_FAIL, msg)
             raise RuntimeError(msg)
 
-        if self._auth_adapter["is_interractive"]() and not interactive:     
-            msg = f"Authentication adapter {self._auth_adapter['name']} requires interactive authentication"
+        if self._auth_adapter[_ADAPTER_ATTR_AUTH_INTERACTIVE] and not allow_interactive:
+            msg = f"Authentication adapter {self._auth_adapter[_ADAPTER_ATTR_NAME]} requires interactive authentication"
             await self._onAuthUpdate(AUTH_STATUS_FAIL, msg)
             raise RuntimeError(msg)
 
         await self._onAuthUpdate(AUTH_STATUS_INPROGRESS, "Authentication process started")
 
-        auth = await self._auth_adapter["authenticate"](self._aiohttp_session, self._config)
-        if not auth:
-            await self._onAuthUpdate(AUTH_STATUS_FAIL, "Authentication failed, check logs")
+        try:
+            # clear all cookies before this, so we dont have any legacy attemps
+            # causing issues
+            self._aiohttp_session.cookie_jar.clear()
+            if not await self._auth_adapter[_ADAPTER_ATTR_AUTHENTICATE](self._aiohttp_session, self._config[VKLASS_CONFKEY_AUTH_URL], _notifyQrCodeUpdate):
+                raise PermissionError("Vklass authentication failed")
+        except Exception as err:
+            await self._onAuthUpdate(AUTH_STATUS_FAIL, str(err))
             await self._setAuthFail()
-            raise RuntimeError("Vklass authentication failed")
+            raise
 
-        # _aiohttp_session cookie jar should now be updated with the new auth cookie, trigger the async callback
-        cb = self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE, None)
-        if cb:
-            cookie = self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME)
-            if cookie:
-                await cb(cookie.value)
+        # verify auth successful
+        cookie = self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME)
+        if not cookie:
+            msg = f"Authentication failed, {_AUTH_COOKIE_NAME} cookie not found in aiohttp session"
+            await self._onAuthUpdate(AUTH_STATUS_FAIL, msg)
+            await self._setAuthFail()
+            raise PermissionError(msg)
 
+
+        await self._notifyAuthCookieUpdate()
         await self._onAuthUpdate(AUTH_STATUS_SUCCESS, "Vklass authentication successful")
         return True
 
-    async def _handleResponseCookies(self, response_cookies) -> None:
+    async def logout (self):
+        self._aiohttp_session.cookie_jar.clear()
+        await self._onAuthUpdate(AUTH_STATUS_FAIL, "Logged out")
+        await self._setAuthFail()
 
-        cb = self._config.get(VKLASS_CONFKEY_ASYNC_ON_AUTH_COOKIE_UPDATE, None)
-        if not cb:
+    async def _notifyAuthCookieUpdate(self, response_cookies = None) -> None:
+
+        handlers = self.getHandlers(VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE)
+        if not handlers:
             return
 
-        for cookies in response_cookies:
-            for name, morsel in cookies.items():
-                if name == _AUTH_COOKIE_NAME:
-                    await cb(morsel.value)
-                    return
+        if isinstance(response_cookies, str) and response_cookies == "logout":
+            for handler in handlers:
+                await handler(None)
+            return
+
+        # get from response_cookies
+        if response_cookies:
+            for cookies in response_cookies:
+                for name, morsel in cookies.items():
+                    if name == _AUTH_COOKIE_NAME:
+                        for handler in handlers:
+                            await handler(morsel.value)
+                        return
+            return
+        
+        # get from session
+        cookie = self._aiohttp_session.cookie_jar.filter_cookies(URL(_VKLASS_URL_BASE)).get(_AUTH_COOKIE_NAME)
+        if not cookie:
+            log.error (f"_notifyAuthCookieUpdate: {_AUTH_COOKIE_NAME} cookie not found in aiohttp session")
+            return
+
+        for handler in handlers:
+            if not cookie.value:
+                await handler(None)
+            else:
+                await handler(cookie.value)
+        return
+
 
 
     async def _fetch (self, ep_key:str, data = None) -> str | dict :
@@ -256,7 +377,6 @@ class VklassSession(ObjBase):
         await self.authenticate(force=self._reAuth)
         request_method = self._aiohttp_session.get if data is None else self._aiohttp_session.post
         request_kwargs = {
-            "headers": self._headers,
             "allow_redirects": ep[_EPKEY_ALLOWREDIRECTS],
             "raise_for_status": False,
             "timeout": 30,
@@ -307,7 +427,7 @@ class VklassSession(ObjBase):
 
         self._reAuth = False
         self._setAuthSuccess()
-        await self._handleResponseCookies(response_cookies)
+        await self._notifyAuthCookieUpdate(response_cookies)
 
         if self.DEBUG:
             if ep[_EPKEY_CONTENTTYPE] == _EPTYPE_JSON:
@@ -447,8 +567,8 @@ class VklassSession(ObjBase):
 
 class VklassGateway(VklassSession):
 
-    def __init__(self, config, aiohttp_session):
-        super().__init__(config, aiohttp_session)
+    def __init__(self, config):
+        super().__init__(config)
 
 
     async def getCalendar(self, dateBegin:str, dateEnd:str, childIds:list|None=None):

@@ -31,15 +31,15 @@ Version 1.0 is calendar-focused. The component may later be extended with more V
 
 ## Session and authentication model
 * `VklassSession` owns the authenticated `aiohttp` session
-* Authentication happens inside the integration and inside the shared session, not by importing cookies from an external source
+* The gateway uses its own `aiohttp.ClientSession` instead of Home Assistant's shared session
+* Authentication happens inside the integration and inside that gateway-owned session, not by importing cookies from an external source
 * Successful authentication must leave the required Vklass cookies in the `aiohttp` cookie jar used by later data requests
 * Authentication support is adapter-driven. The gateway selects an auth adapter by matching the configured auth URL against available modules in `custom_components/vklass/auth_adapters/`
 * An authentication method is considered supported only when a compatible auth adapter exists and can handle the configured auth URL
 * The gateway may still observe and propagate updated auth cookies received from Vklass responses, but cookie import is not a supported primary auth method
 * The session keepalive is part of the login/session lifecycle, not something entities manage individually
 * Entities consume gateway data only and should not know how login works
-
-`binary_sensor.vklass_<name>_loggedin` represents session state. Login state and keepalive are handled independently of calendar entities. Vklass should be touched regularly to keep the session alive, while other entities should stay focused on their own data refresh responsibilities.
+* The gateway session may use auth-specific transport settings when district login stacks require browser-sensitive behavior
 
 ## Authentication design
 Login is handled through real Vklass-supported authentication methods owned by the gateway.
@@ -49,7 +49,7 @@ Login is handled through real Vklass-supported authentication methods owned by t
 * `login.py` discovers available auth adapters from `custom_components/vklass/auth_adapters/`
 * At runtime, the gateway selects the first adapter whose `can_handle(url)` matches the configured auth URL
 * The auth URL therefore determines both the login flow and which input fields are relevant for that flow
-* If no adapter matches the URL, authentication fails immediately
+* If no adapter matches the URL, gateway-driven authentication fails immediately and the integration falls back to the manual-cookie path
 
 ### Supported authentication methods
 Supported methods are not defined by a fixed global list. They are defined by the set of compatible auth adapters present in the codebase.
@@ -60,7 +60,7 @@ Current design examples:
 * BankID personal number is supported only for auth URLs handled by a compatible personal-number adapter
 
 ### BankID QR flow
-Most districts primarily use BankID for guardians. Where a compatible adapter exists, the design target is to execute the real BankID flow inside the integration and shared session instead of asking the user to retrieve browser cookies externally.
+Most districts primarily use BankID for guardians. Where a compatible adapter exists, the design target is to execute the real BankID flow inside the integration and the gateway-owned session instead of asking the user to retrieve browser cookies externally.
 
 The gateway adapter may:
 * Load the district login page
@@ -68,6 +68,19 @@ The gateway adapter may:
 * Extract the BankID session identifiers needed for QR/status polling
 * Surface QR content through an async callback so the UI can show the currently valid QR code
 * Continue the handshake in the same `aiohttp` session until the required Vklass cookies are established
+
+### Aiohttp transport requirements
+Some district auth stacks are incompatible with `aiohttp`'s default cookie quoting. The Göteborg BankID flow is a confirmed example.
+
+Proof:
+* The same live `wssoi` session values succeed when replayed with browser or curl cookie formatting
+* The same live values fail when replayed with `aiohttp`'s default quoted cookie formatting
+* A raw one-off `wssoi` request with unquoted browser-shaped cookies succeeds and reaches the expected Göteborg IdP redirect
+
+Required solution:
+* The gateway-owned `aiohttp` session must use `CookieJar(quote_cookie=False)`
+* Signed redirect flows must preserve raw redirect URLs, so the gateway session must keep `requote_redirect_url=False`
+* These transport settings belong to the gateway-owned session and must not depend on mutating Home Assistant's shared session
 
 ### Other authentication flows
 Other flows such as username/password or BankID personal number follow the same design principle:
@@ -101,12 +114,34 @@ If Vklass or district-specific behavior later forces a fallback strategy, it sho
   * Sensor shall hold the auth_status callback function used by VklassGateway.authenticate to communicate state and message.
   * Attributes:
     * auth url (as set in config flow)
+    * auth_method - from VklassGateway.getAuthMethod()
+    * auth_interactive - from VklassGateway.getAuthMethod(), informational metadata for current and future UI use
     * qr_code - exist only after callback function set's it
     * message - auth error if
     * last_success - last successful authentication
 
 ## Home Assistant integration EXTENDED
 * Vklass calendar entities, split by student and later by event type as designed
-* UI support for BankID login interaction, primarily QR presentation and login-state feedback
 
+## Lovelave companion card for vklass authentication
+* card in custom_components/vklass/frontend/vklass-auth-card.js
+* auto registered and injected as a frontend resource at integration init
+* card is configured with an auth sensor entity. The entity's `auth_method` attribute decides the behaviour of the card. The entity also exposes `auth_interactive` as informational metadata for current and future UI use. (see const.py `AUTH_METHOD_<...>` for possible values)
+* raw `qr_code` sensor data is passed unchanged from the gateway. The integration/card layer is responsible for rendering that raw payload as a visible QR image
+  
+  * auth_method=AUTH_METHOD_BANKID_QR and state=
+    * fail - display button with "Logga in i Vklass"
+    * success - display text "Vklass logged in", and show a logout button that calls the vklass logout service
+    * inprogress - 
+      * display text: "Scanna med BankID appen"
+      * render qr code from auth sensor, update image when code renews
+    * When "Logga in i Vklass" button is pressed the card should render a spinner instead of the button util the state changes to inprogress. 
 
+  * auth_method=AUTH_METHOD_MANUAL_COOKIE and state=
+    * fail - 
+      * display text: "Login to Vklass with browser and paste value of se.vklass.authentication cookie here"
+      * display text input field for cookie pasting.
+      * display login button - calls vklass.set_auth_cookie service
+    * success - display text "Vklass logged in"
+
+* if auth entity state is "success", display logout button (calling vklass logout service)

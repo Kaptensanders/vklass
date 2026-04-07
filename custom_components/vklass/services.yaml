@@ -1,0 +1,31 @@
+authenticate:
+  target:
+    entity:
+      integration: vklass
+      domain: sensor
+  name: Authenticate
+  description: Start authentication for the selected Vklass auth sensor.
+
+logout:
+  target:
+    entity:
+      integration: vklass
+      domain: sensor
+  name: Log out
+  description: Clear the authenticated Vklass session for the selected Vklass auth sensor.
+
+set_auth_cookie:
+  target:
+    entity:
+      integration: vklass
+      domain: sensor
+  name: Set authentication cookie
+  description: Set the `se.vklass.authentication` cookie manually for the selected Vklass auth sensor.
+  fields:
+    auth_cookie:
+      name: Authentication cookie
+      description: The value of the `se.vklass.authentication` cookie from a logged in browser.
+      required: true
+      example: abc123FFFOOOkj22JJ
+      selector:
+        text:

@@ -2,81 +2,60 @@
   "config": {
     "step": {
       "user": {
-        "title": "Lägg till Skolmat",
+        "title": "Konfigurera Vklass",
+        "description": "Välkommen till Vklass. Börja med att välja ett namn för denna Vklass-enhet i Home Assistant.",
         "data": {
-          "name": "Skolans namn",
-          "url": "Meny-URL",
-          "lunch_begin": "Lunchens starttid (HH:MM)",
-          "lunch_end": "Lunchens sluttid (HH:MM)"
+          "name": "Vklass enhetsnamn"
         }
       },
-      "configure": {
-        "title": "Konfigurera daglig sammanfattning",
-        "description": "Konfigurera den menysammanfattning som visas som kalenderposter och sensortillstånd. Växla mellan tillgängliga datum och kontrollera att allt ser bra ut.\n\n*Tryck skicka/spara för att se ändringar.\n*Bocka i Jag är klar med konfigureringen när du är nöjd.",
+      "auth": {
+        "title": "Konfigurera Vklass-inloggning",
+        "description": "Ange de inloggningsuppgifter du normalt använder med autentiserings-URL'en. Om du använder BankID QR-inloggning ska du normalt bara ange URL här.",
         "data": {
-          "selected_date": "Datum",
-          "display_input": "Indata (skrivskyddat)",
-          "display_summary": "Tillstånds- och kalendersammanfattning (skrivskyddad)",
-          "meals_selected": "Måltider hittade, välj för filtrering (inga = alla, alltid)",
-          "exclude_label": "Uteslut rätter som innehåller:",
-          "exclude_regex": "Uteslut nyckelord (tryck Enter, /regex/ valfritt)",
-          "prefer_label": "Föredra rätter som innehåller (endast effekt om Max antal rätter är satt)",
-          "prefer_regex": "Föredra nyckelord (tryck Enter, /regex/ valfritt)",
-          "max_entries": "Max antal rätter att slå ihop (0 eller tomt = obegränsat)",
-          "processor_label": "Anpassad dataprocessor (avancerat)",
-          "processor_file": "Processorfil (under processors/)",
-          "processor_fn": "Processorfunktionsnamn",
-          "reload_processor": "Ladda om meny + processor",
-          "done_configuring": "Jag är klar med konfigureringen"
+          "auth_url": "Autentiserings-URL",
+          "username": "Användarnamn",
+          "password": "Lösenord",
+          "personno": "Personnummer"
+        }
+      },
+      "manual_cookie_warning": {
+        "title": "Autentiserings-URL stöds inte",
+        "description": "Ingen stödd Vklass-auth-adapter hittades för `{auth_url}`.\n\nDu kan fortsätta ändå, men då måste `vklass.set_auth_cookie` användas manuellt med värdet från cookie'n `se.vklass.authentication` från en redan inloggad webbläsare.\n\nBekräfta nedan för att fortsätta med manuell cookie-hantering, eller gå tillbaka och ändra autentiserings-URL.",
+        "data": {
+          "unsupported_auth_url_action": "Nästa steg"
         }
       }
     },
     "error": {
-      "invalid_url": "Ogiltig URL",
-      "invalid_lunch_interval": "Lunchens sluttid måste vara efter starttiden",
-      "menu_fetch_failed": "Kunde inte hämta menyn. Kontrollera URL och loggar.",
-      "processor_missing_fields": "Ange både processorfil och funktionsnamn.",
-      "processor_file_missing": "Processorfilen hittades inte under processors/.",
-      "processor_import_failed": "Processormodulen kunde inte laddas.",
-      "processor_fn_missing": "Processorfunktionen hittades inte eller kan inte anropas."
+      "name_exists": "En Vklass-post med detta namn finns redan."
     }
   },
   "options": {
     "step": {
-      "configure": {
-        "title": "Konfigurera sammanfattning",
-        "description": "Konfigurera den menysammanfattning som visas som kalenderposter och sensortillstånd. Växla mellan tillgängliga datum och kontrollera att allt ser bra ut.\n\n*Tryck skicka/spara för att se ändringar.\n*Bocka i Jag är klar med konfigureringen när du är nöjd.",
+      "init": {
+        "title": "Konfigurera Vklass-inloggning",
+        "description": "Ange de inloggningsuppgifter du normalt använder med autentiserings-URL'en. Om du använder BankID QR-inloggning ska du normalt bara ange URL här.",
         "data": {
-          "selected_date": "Datum",
-          "display_input": "Indata (skrivskyddat)",
-          "display_summary": "Tillstånds- och kalendersammanfattning (skrivskyddad)",
-          "meals_selected": "Måltider hittade, välj för filtrering (inga = alla, alltid)",
-          "exclude_label": "Uteslut rätter som innehåller:",
-          "exclude_regex": "Uteslut nyckelord (tryck Enter, /regex/ valfritt)",
-          "prefer_label": "Föredra rätter som innehåller (endast effekt om Max antal rätter är satt)",
-          "prefer_regex": "Föredra nyckelord (tryck Enter, /regex/ valfritt)",
-          "max_entries": "Max antal rätter att slå ihop (0 eller tomt = obegränsat)",
-          "processor_label": "Anpassad dataprocessor (avancerat)",
-          "processor_file": "Processorfil",
-          "processor_fn": "Processorfunktionsnamn",
-          "reload_processor": "Ladda om meny + processor vid skicka",
-          "done_configuring": "Jag är klar med konfigureringen"
+          "auth_url": "Autentiserings-URL",
+          "username": "Användarnamn",
+          "password": "Lösenord",
+          "personno": "Personnummer"
+        }
+      },
+      "manual_cookie_warning": {
+        "title": "Autentiserings-URL stöds inte",
+        "description": "Ingen stödd Vklass-auth-adapter hittades för `{auth_url}`.\n\nDu kan fortsätta ändå, men då måste `vklass.set_auth_cookie` användas manuellt med värdet från cookie'n `se.vklass.authentication` från en redan inloggad webbläsare.\n\nBekräfta nedan för att fortsätta med manuell cookie-hantering, eller gå tillbaka och ändra autentiserings-URL.",
+        "data": {
+          "unsupported_auth_url_action": "Nästa steg"
         }
       }
-    },
-    "error": {
-      "processor_missing_fields": "Ange både processorfil och funktionsnamn.",
-      "processor_file_missing": "Processorfilen hittades inte under processors/.",
-      "processor_import_failed": "Processorfunktionen kunde inte laddas.",
-      "processor_fn_missing": "Processorfunktionen hittades inte eller kan inte anropas."
     }
   },
-  "entity": {
-    "sensor": {
-      "menu": {
-        "state": {
-          "no_food_today": "Ingen meny idag"
-        }
+  "selector": {
+    "unsupported_auth_url_action": {
+      "options": {
+        "edit_auth_url": "Gå tillbaka och ändra autentiserings-URL",
+        "continue_manual_cookie": "Fortsätt med manuell cookie-hantering"
       }
     }
   }

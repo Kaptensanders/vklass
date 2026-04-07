@@ -1,7 +1,3 @@
-# stub for vklass user credentials login
-# non-interactive
-
-
 ####################################################################
 # adapters must define:
 # 
@@ -12,14 +8,14 @@
 # async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool
 #
 
-from ..const import AUTH_METHOD_USERPASS
+from ..const import AUTH_METHOD_BANKID_PERSONNO
 
-ADAPTER_DESCRIPTION = "Vklass inloggning med användarnamn/lösenord"
-ADAPTER_AUTH_METHOD = AUTH_METHOD_USERPASS
+ADAPTER_DESCRIPTION = "Adapter Template"
+ADAPTER_AUTH_METHOD = AUTH_METHOD_BANKID_PERSONNO
 ADAPTER_AUTH_INTERACTIVE = True
 
 def can_handle(url:str) -> bool:
-    return "auth.vklass.se/credentials" in url
+    return "https://foo.bar.baz" in url
 
 async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool:
-    raise NotImplementedError("vklass username and password login not implemented")
+    raise NotImplementedError("vklass bankid login not implemented")

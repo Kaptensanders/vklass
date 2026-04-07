@@ -34,18 +34,22 @@ Status: **In Progress**
 Status: **Current**
 * **Home Assistant integration BASE** design implementation only
 * Some stub code exist as example, design pattern guidance, replace with real implementation 
-* Basic robust integration design, shared vklassgateway and the Vklass device
-* Config flow for supporting auth methods (implied in const.py)
-* Vklass authenticated binary sensor
+* (DONE) Basic robust integration design, shared vklassgateway and the Vklass device
+* (DONE) Config flow for supporting auth methods (implied in const.py)
+* The Vklass sensor for authentication
+
+### 4. Lovelace companion card for QR auth
+Status: **Current**
+* according do design spec
 
 
-### 4. Home Assistant Vklass integration, phase 2
+### 5. Home Assistant Vklass integration, phase 2
 Status: **Pending**
 * Home Assistant presentation of BankID QR updates during login
 * Vklass calendar entity, with calendar entities per student and later event-type separation
 
 
-### 5. The VklassGateway component - completion and refinement
+### 6. The VklassGateway component - completion and refinement
 Status: **Pending**  
 * better _step3_poll_qr status handling in goteborg_bankid.py when we can try better with the HA integration
 * consistant and production grade handling of auth adapters. Documented and well designed. 
