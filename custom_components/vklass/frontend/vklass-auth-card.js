@@ -1,40 +1,51 @@
 const AUTH_METHOD_BANKID_QR = "bankid_qr";
+const AUTH_METHOD_BANKID_PERSONNO = "bankid_personno";
+const AUTH_METHOD_USERPASS = "userpass";
 const AUTH_METHOD_MANUAL_COOKIE = "manual_cookie";
 const AUTH_STATUS_INPROGRESS = "inprogress";
 const AUTH_STATUS_SUCCESS = "success";
 const AUTH_STATUS_FAIL = "fail";
+const PERSISTED_SECRET_SENTINEL = "__PERSISTED_SECRET__";
 const CARD_TAG = "vklass-auth-card";
 const EDITOR_TAG = "vklass-auth-card-editor";
+const SUPPORTED_AUTH_METHODS = new Set([
+  AUTH_METHOD_BANKID_QR,
+  AUTH_METHOD_BANKID_PERSONNO,
+  AUTH_METHOD_USERPASS,
+  AUTH_METHOD_MANUAL_COOKIE,
+]);
 const TRANSLATIONS = {
   en: {
-    entity_not_found: "Entity not found",
-    unsupported_auth_method: "Unsupported auth method",
     logged_in: "Logged in to Vklass",
-    logged_out: "Not logged in to Vklass",
     scan_bankid: "Scan with the BankID app",
     waiting_for_qr: "Waiting for QR code...",
     starting_authentication: "Starting authentication...",
     login_to_vklass: "Log in to Vklass",
+    username: "Username",
+    password: "Password",
+    personno: "Personal number",
+    cookie: "se.vklass.authentication cookie:",
+    save_credentials: "Save credentials",
     cookie_instructions:
-      "Login to Vklass with a browser and paste the value of the se.vklass.authentication cookie here",
-    login_with_cookie: "Login with cookie",
+      "Log in to Vklass with a browser and paste the value of the se.vklass.authentication cookie here",
     logout: "Log out",
     auth_sensor: "Auth sensor",
     select_auth_sensor: "Select a Vklass auth sensor",
     auth_sensor_hint: "Only entities matching sensor.vklass_*_auth are shown.",
   },
   sv: {
-    entity_not_found: "Entiteten hittades inte",
-    unsupported_auth_method: "Autentiseringsmetoden stöds inte",
     logged_in: "Inloggad i Vklass",
-    logged_out: "Inte inloggad i Vklass",
     scan_bankid: "Scanna med BankID appen",
     waiting_for_qr: "Väntar på QR-kod...",
     starting_authentication: "Startar autentisering...",
     login_to_vklass: "Logga in i Vklass",
+    username: "Användarnamn",
+    password: "Lösenord",
+    personno: "Personnummer",
+    cookie: "se.vklass.authentication cookie:",
+    save_credentials: "Spara inloggningsuppgifter",
     cookie_instructions:
       "Logga in i Vklass med en webbläsare och klistra in värdet för cookien se.vklass.authentication här",
-    login_with_cookie: "Logga in med cookie",
     logout: "Logga ut",
     auth_sensor: "Autentiseringssensor",
     select_auth_sensor: "Välj en Vklass autentiseringssensor",
@@ -102,11 +113,19 @@ class VklassAuthCard extends HTMLElement {
 
     this._config = config;
     this._pendingAction = null;
-    this._cookieValue = "";
+    this._lastState = null;
     this._qrCode = null;
     this._qrImageUrl = null;
     this._qrLoading = false;
     this._qrError = null;
+    this._formValues = {
+      username: "",
+      password: "",
+      personno: "",
+      cookie: "",
+      save_credentials: false,
+    };
+    this._dirtyFields = new Set();
 
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
@@ -116,43 +135,83 @@ class VklassAuthCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     const stateObj = hass.states[this._config.entity];
+    const authMethod = stateObj?.attributes?.auth_method;
+    const nextState = stateObj?.state ?? null;
+    let forceSync = false;
 
-    if (this._pendingAction === "authenticate" && stateObj?.state === AUTH_STATUS_INPROGRESS) {
+    if (
+      this._pendingAction === "authenticate" &&
+      authMethod === AUTH_METHOD_BANKID_QR &&
+      nextState === AUTH_STATUS_INPROGRESS
+    ) {
       this._pendingAction = null;
     }
-    if (this._pendingAction === "set_cookie" && stateObj?.state === AUTH_STATUS_SUCCESS) {
+
+    if (this._pendingAction === "logout" && nextState !== AUTH_STATUS_SUCCESS) {
       this._pendingAction = null;
-      this._cookieValue = "";
+      this._dirtyFields.clear();
+      forceSync = true;
     }
-    if (this._pendingAction === "logout" && stateObj?.state !== AUTH_STATUS_SUCCESS) {
-      this._pendingAction = null;
+
+    if (this._lastState !== AUTH_STATUS_SUCCESS && nextState === AUTH_STATUS_SUCCESS) {
+      this._dirtyFields.clear();
+      forceSync = true;
     }
+
+    if (!stateObj) {
+      this._renderErrorCard(`Entity not found: ${this._config.entity}`);
+      this._lastState = null;
+      return;
+    }
+
+    if (!SUPPORTED_AUTH_METHODS.has(authMethod)) {
+      this._renderErrorCard(`Unsupported auth method: ${authMethod ?? "unknown"}`);
+      this._lastState = nextState;
+      return;
+    }
+
+    this._syncFormFromState(stateObj, forceSync);
 
     const qrCode =
-      stateObj?.state === AUTH_STATUS_INPROGRESS
-        ? String(stateObj.attributes.qr_code ?? "").trim()
+      nextState === AUTH_STATUS_INPROGRESS
+        ? String(stateObj?.attributes?.qr_code ?? "").trim()
         : "";
     this._syncQrImage(qrCode);
 
     this._render(stateObj);
+    this._lastState = nextState;
   }
 
   getCardSize() {
-    return 4;
+    return 5;
+  }
+
+  _syncFormFromState(stateObj, force = false) {
+    if (!stateObj) {
+      return;
+    }
+
+    const attrs = stateObj.attributes ?? {};
+    const authMethod = attrs.auth_method;
+    const nextValues = {
+      username: String(attrs.username ?? ""),
+      password: attrs.persisted_password ? PERSISTED_SECRET_SENTINEL : "",
+      personno: String(attrs.personno ?? ""),
+      cookie: "",
+      save_credentials: this._supportsSaveCredentials(authMethod)
+        ? Boolean(attrs.save_credentials)
+        : false,
+    };
+
+    for (const [key, value] of Object.entries(nextValues)) {
+      if (force || !this._dirtyFields.has(key)) {
+        this._formValues[key] = value;
+      }
+    }
   }
 
   _render(stateObj) {
     if (!this.shadowRoot || !this._hass) {
-      return;
-    }
-
-    if (!stateObj) {
-      this.shadowRoot.innerHTML = `
-        <ha-card>
-          <div class="wrap missing">${escapeHtml(localize(this._hass, "entity_not_found"))}: ${escapeHtml(this._config.entity)}</div>
-        </ha-card>
-        ${this._style()}
-      `;
       return;
     }
 
@@ -164,6 +223,7 @@ class VklassAuthCard extends HTMLElement {
       ${this._style()}
       <ha-card>
         <div class="wrap">
+          ${this._renderHeader(stateObj, authMethod, this._config.entity)}
           ${this._renderBody(stateObj, authMethod, state, message)}
         </div>
       </ha-card>
@@ -174,15 +234,22 @@ class VklassAuthCard extends HTMLElement {
       ?.addEventListener("click", () => this._handleAuthenticate());
 
     this.shadowRoot
-      .querySelector("[data-action='set-cookie']")
-      ?.addEventListener("click", () => this._handleSetCookie());
-
-    this.shadowRoot
       .querySelector("[data-action='logout']")
       ?.addEventListener("click", () => this._handleLogout());
 
-    this.shadowRoot.querySelector(".cookie-input")?.addEventListener("input", (event) => {
-      this._cookieValue = event.target.value;
+    this.shadowRoot.querySelectorAll("[data-field]").forEach((input) => {
+      input.addEventListener("input", (event) => {
+        const { field } = event.target.dataset;
+        this._formValues[field] = event.target.value;
+        this._dirtyFields.add(field);
+        this._render(this._hass.states[this._config.entity]);
+      });
+    });
+
+    this.shadowRoot.querySelector("[data-field='save_credentials']")?.addEventListener("change", (event) => {
+      this._formValues.save_credentials = event.target.checked;
+      this._dirtyFields.add("save_credentials");
+      this._render(this._hass.states[this._config.entity]);
     });
   }
 
@@ -196,20 +263,36 @@ class VklassAuthCard extends HTMLElement {
           display: grid;
           gap: 16px;
           padding: 16px;
-          justify-items: center;
         }
-        .missing,
-        .status {
+        .header-block {
+          display: grid;
+          gap: 4px;
+          justify-items: center;
+          text-align: center;
+        }
+        .header-title {
           color: var(--primary-text-color);
-          font-size: 1rem;
+          font-size: var(--ha-font-size-l);
+          font-weight: var(--ha-font-weight-medium);
+          line-height: 1.3;
+          margin-bottom: 10px;
+        }
+        .header-subtitle {
+          color: var(--secondary-text-color);
+          font-family: var(--ha-font-family-body);
+          font-size: var(--ha-font-size-m);
+          font-weight: var(--ha-font-weight-medium);
+          line-height: 1.4;
+        }
+        .status,
+        .hint {
+          color: var(--primary-text-color);
           line-height: 1.45;
           text-align: center;
         }
         .hint {
           color: var(--secondary-text-color);
           font-size: 0.95rem;
-          line-height: 1.5;
-          text-align: center;
         }
         .error {
           color: var(--error-color);
@@ -224,8 +307,34 @@ class VklassAuthCard extends HTMLElement {
           flex-wrap: wrap;
           justify-content: center;
         }
-        ha-progress-button {
-          --mdc-theme-primary: var(--primary-color);
+        .form {
+          display: grid;
+          gap: 12px;
+        }
+        .field {
+          display: grid;
+          gap: 6px;
+        }
+        .field label,
+        .checkbox {
+          color: var(--primary-text-color);
+          font-size: 0.95rem;
+        }
+        .checkbox {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          justify-content: center;
+        }
+        .field input {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 12px;
+          border: 1px solid var(--divider-color);
+          border-radius: 12px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font: inherit;
         }
         .action-button {
           appearance: none;
@@ -259,9 +368,6 @@ class VklassAuthCard extends HTMLElement {
           border-top-color: var(--primary-color);
           animation: spin 0.9s linear infinite;
         }
-        ha-circular-progress {
-          color: var(--primary-color);
-        }
         .qr-shell {
           background: linear-gradient(180deg, #ffffff, #f6f6f6);
           border-radius: 18px;
@@ -273,19 +379,6 @@ class VklassAuthCard extends HTMLElement {
           display: block;
           width: min(100%, 320px);
           height: auto;
-        }
-        .cookie-input {
-          width: 100%;
-          max-width: 32rem;
-          min-height: 104px;
-          box-sizing: border-box;
-          resize: vertical;
-          padding: 12px;
-          border: 1px solid var(--divider-color);
-          border-radius: 12px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          font: inherit;
         }
         ha-alert {
           --alert-color: var(--error-color);
@@ -299,25 +392,71 @@ class VklassAuthCard extends HTMLElement {
     `;
   }
 
-  _renderBody(stateObj, authMethod, state, message) {
-    if (authMethod === AUTH_METHOD_BANKID_QR) {
-      return this._renderBankIdQr(stateObj, state, message);
+  _renderErrorCard(error) {
+    if (!this.shadowRoot) {
+      return;
     }
 
-    if (authMethod === AUTH_METHOD_MANUAL_COOKIE) {
-      return this._renderManualCookie(state, message);
-    }
+    this.shadowRoot.innerHTML = "";
+    const errorCard = document.createElement("hui-error-card");
+    errorCard.setConfig({
+      type: "error",
+      error,
+      origConfig: this._config,
+    });
+    errorCard.hass = this._hass;
+    this.shadowRoot.appendChild(errorCard);
+  }
+
+  _renderHeader(stateObj, authMethod, fallbackTitle) {
+    const title = this._getCardTitle(stateObj, fallbackTitle);
+    const subtitle = this._getCardSubtitle(stateObj, authMethod);
 
     return `
-      <div class="status">${escapeHtml(localize(this._hass, "unsupported_auth_method"))}</div>
-      <div class="hint">${escapeHtml(authMethod ?? "unknown")}</div>
+      <div class="header-block">
+        <div class="header-title">${escapeHtml(title)}</div>
+        ${subtitle ? `<div class="header-subtitle">${escapeHtml(subtitle)}</div>` : ""}
+      </div>
     `;
   }
 
-  _renderBankIdQr(stateObj, state, message) {
+  _getCardTitle(stateObj, fallbackTitle) {
+    return (
+      stateObj?.attributes?.device_name ||
+      stateObj?.attributes?.friendly_name ||
+      fallbackTitle ||
+      this._config.entity
+    );
+  }
+
+  _getCardSubtitle(stateObj, authMethod) {
+    if (
+      authMethod !== AUTH_METHOD_BANKID_QR &&
+      authMethod !== AUTH_METHOD_BANKID_PERSONNO &&
+      authMethod !== AUTH_METHOD_USERPASS &&
+      authMethod !== AUTH_METHOD_MANUAL_COOKIE
+    ) {
+      return "";
+    }
+
+    return stateObj?.attributes?.auth_adapter_title || "";
+  }
+
+  _renderBody(stateObj, authMethod, state, message) {
+    if (authMethod === AUTH_METHOD_BANKID_QR) {
+      return this._renderBankIdQr(state, message);
+    }
+
+    if (this._isCredentialMethod(authMethod)) {
+      return this._renderCredentialMethod(authMethod, state, message);
+    }
+
+    throw new Error(`Unsupported auth method: ${authMethod ?? "unknown"}`);
+  }
+
+  _renderBankIdQr(state, message) {
     if (state === AUTH_STATUS_SUCCESS) {
       return `
-        <div class="status">${escapeHtml(localize(this._hass, "logged_in"))}</div>
         <div class="actions">${this._renderLogoutButton()}</div>
       `;
     }
@@ -338,12 +477,121 @@ class VklassAuthCard extends HTMLElement {
     }
 
     return `
-      <div class="status">${escapeHtml(localize(this._hass, "logged_out"))}</div>
       <div class="actions">
         ${this._renderActionButton("authenticate", localize(this._hass, "login_to_vklass"))}
       </div>
       ${state === AUTH_STATUS_FAIL && message ? this._renderError(message) : ""}
     `;
+  }
+
+  _renderCredentialMethod(authMethod, state, message) {
+    if (state === AUTH_STATUS_SUCCESS) {
+      return `
+        <div class="actions">${this._renderLogoutButton()}</div>
+      `;
+    }
+
+    const buttonDisabled = this._isCredentialButtonDisabled(authMethod);
+    const showSpinner = this._pendingAction === "authenticate";
+
+    return `
+      <div class="form">
+        ${this._getCredentialFields(authMethod).join("")}
+        ${this._supportsSaveCredentials(authMethod) ? `
+        <label class="checkbox">
+          <input type="checkbox" data-field="save_credentials" ${this._formValues.save_credentials ? "checked" : ""}>
+          <span>${escapeHtml(localize(this._hass, "save_credentials"))}</span>
+        </label>
+        ` : ""}
+        <div class="actions">
+          ${showSpinner
+            ? this._renderSpinner()
+            : this._renderActionButton("authenticate", localize(this._hass, "login_to_vklass"), buttonDisabled)}
+        </div>
+        ${state === AUTH_STATUS_FAIL && message ? this._renderError(message) : ""}
+      </div>
+    `;
+  }
+
+  _renderInput(field, type) {
+    return `
+      <div class="field">
+        <label for="${escapeHtml(field)}">${escapeHtml(localize(this._hass, field))}</label>
+        <input
+          id="${escapeHtml(field)}"
+          type="${escapeHtml(type)}"
+          data-field="${escapeHtml(field)}"
+          value="${escapeHtml(this._formValues[field] ?? "")}"
+          autocomplete="${escapeHtml(this._getAutocompleteValue(field, type))}"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        >
+      </div>
+    `;
+  }
+
+  _getAutocompleteValue(field, type) {
+    if (field === "cookie") {
+      return "off";
+    }
+
+    if (field === "password") {
+      return "current-password";
+    }
+
+    if (type === "password") {
+      return "off";
+    }
+
+    return "off";
+  }
+
+  _isCredentialMethod(authMethod) {
+    return (
+      authMethod === AUTH_METHOD_BANKID_PERSONNO ||
+      authMethod === AUTH_METHOD_USERPASS ||
+      authMethod === AUTH_METHOD_MANUAL_COOKIE
+    );
+  }
+
+  _supportsSaveCredentials(authMethod) {
+    return authMethod === AUTH_METHOD_BANKID_PERSONNO || authMethod === AUTH_METHOD_USERPASS;
+  }
+
+  _getCredentialFields(authMethod) {
+    if (authMethod === AUTH_METHOD_BANKID_PERSONNO) {
+      return [this._renderInput("personno", "text")];
+    }
+
+    if (authMethod === AUTH_METHOD_USERPASS) {
+      return [
+        this._renderInput("username", "text"),
+        this._renderInput("password", "password"),
+      ];
+    }
+
+    if (authMethod === AUTH_METHOD_MANUAL_COOKIE) {
+      return [
+        `<div class="hint">${escapeHtml(localize(this._hass, "cookie_instructions"))}</div>`,
+        this._renderInput("cookie", "text"),
+      ];
+    }
+
+    return [];
+  }
+
+  _isCredentialButtonDisabled(authMethod) {
+    if (authMethod === AUTH_METHOD_BANKID_PERSONNO) {
+      return !String(this._formValues.personno || "").trim();
+    }
+    if (authMethod === AUTH_METHOD_USERPASS) {
+      return !String(this._formValues.username || "").trim() || !String(this._formValues.password || "").trim();
+    }
+    if (authMethod === AUTH_METHOD_MANUAL_COOKIE) {
+      return !String(this._formValues.cookie || "").trim();
+    }
+    return false;
   }
 
   _renderQrImage() {
@@ -435,28 +683,6 @@ class VklassAuthCard extends HTMLElement {
     }
   }
 
-  _renderManualCookie(state, message) {
-    if (state === AUTH_STATUS_SUCCESS) {
-      return `
-        <div class="status">${escapeHtml(localize(this._hass, "logged_in"))}</div>
-        <div class="actions">${this._renderLogoutButton()}</div>
-      `;
-    }
-
-    const buttonDisabled = this._pendingAction === "set_cookie" || !this._cookieValue.trim();
-
-    return `
-      <div class="status">${escapeHtml(localize(this._hass, "cookie_instructions"))}</div>
-      <textarea class="cookie-input" placeholder="se.vklass.authentication">${escapeHtml(this._cookieValue)}</textarea>
-      <div class="actions">
-        ${this._pendingAction === "set_cookie"
-          ? this._renderSpinner()
-          : this._renderActionButton("set-cookie", localize(this._hass, "login_with_cookie"), buttonDisabled)}
-      </div>
-      ${state === AUTH_STATUS_FAIL && message ? this._renderError(message) : ""}
-    `;
-  }
-
   _renderActionButton(action, label, disabled = false) {
     if (hasElement("ha-progress-button")) {
       return `<ha-progress-button data-action="${escapeHtml(action)}" ${disabled ? "disabled" : ""}>${escapeHtml(label)}</ha-progress-button>`;
@@ -489,39 +715,50 @@ class VklassAuthCard extends HTMLElement {
     return `<div class="error">${escapeHtml(message)}</div>`;
   }
 
-  async _handleAuthenticate() {
-    this._pendingAction = "authenticate";
-    this._render(this._hass.states[this._config.entity]);
+  _buildAuthenticatePayload(authMethod) {
+    const payload = {
+      entity_id: this._config.entity,
+    };
 
-    try {
-      await this._hass.callService("vklass", "authenticate", {
-        entity_id: this._config.entity,
-      });
-    } catch (err) {
-      this._pendingAction = null;
-      this._render(this._hass.states[this._config.entity]);
-      throw err;
+    if (authMethod === AUTH_METHOD_BANKID_PERSONNO) {
+      payload.save_credentials = Boolean(this._formValues.save_credentials);
+      payload.personno = this._formValues.personno ?? "";
+      return payload;
     }
+
+    if (authMethod === AUTH_METHOD_USERPASS) {
+      payload.save_credentials = Boolean(this._formValues.save_credentials);
+      payload.username = this._formValues.username ?? "";
+      payload.password = this._formValues.password ?? "";
+      return payload;
+    }
+
+    if (authMethod === AUTH_METHOD_MANUAL_COOKIE) {
+      payload.cookie = this._formValues.cookie ?? "";
+    }
+
+    return payload;
   }
 
-  async _handleSetCookie() {
-    const authCookie = this._cookieValue.trim();
-    if (!authCookie) {
-      return;
-    }
+  async _handleAuthenticate() {
+    const stateObj = this._hass.states[this._config.entity];
+    const authMethod = stateObj?.attributes?.auth_method;
+    const payload = this._buildAuthenticatePayload(authMethod);
 
-    this._pendingAction = "set_cookie";
-    this._render(this._hass.states[this._config.entity]);
+    this._pendingAction = "authenticate";
+    this._render(stateObj);
 
     try {
-      await this._hass.callService("vklass", "set_auth_cookie", {
-        entity_id: this._config.entity,
-        auth_cookie: authCookie,
-      });
+      await this._hass.callService("vklass", "login", payload);
     } catch (err) {
       this._pendingAction = null;
       this._render(this._hass.states[this._config.entity]);
       throw err;
+    } finally {
+      if (this._pendingAction === "authenticate" && authMethod !== AUTH_METHOD_BANKID_QR) {
+        this._pendingAction = null;
+        this._render(this._hass.states[this._config.entity]);
+      }
     }
   }
 
@@ -632,5 +869,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: CARD_TAG,
   name: "Vklass Authentication",
-  description: "Vklass authentication card for BankID QR and manual cookie login",
+  description: "Vklass authentication card for adapter-driven login flows",
 });

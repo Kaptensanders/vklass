@@ -1,25 +1,34 @@
-# stub for vklass user credentials login
-# non-interactive
-
-
 ####################################################################
 # adapters must define:
 # 
-# AUTH_METHOD = AUTH_METHOD_BANKID_QR | AUTH_METHOD_BANKID_PERSONNO | AUTH_METHOD_USERPASS
-# AUTH_INTERACTIVE = True | False
-# ADAPTER_DESCRIPTION = description of use case. Shown in config flow if multiple adapters match the auth url
-# def can_handle(url) -> bool
-# async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool
+# AUTH_ADAPTERS = {
+#   "adapter1": {
+#       AUTH_ADAPTER_ATTR_TITLE : "Göteborgs stad UBF - Vårdnadshavare",
+#       AUTH_ADAPTER_ATTR_METHOD: AUTH_METHOD_MANUAL_COOKIE,
+#       AUTH_ADAPTER_ATTR_AUTH_FUNCTION: "authenticate"
+#   },
+#   "anotherAdapter": {
+#       ...
+#   }
+# }
 #
 
-from ..const import AUTH_METHOD_USERPASS
 
-ADAPTER_DESCRIPTION = "Vklass inloggning med användarnamn/lösenord"
-ADAPTER_AUTH_METHOD = AUTH_METHOD_USERPASS
-ADAPTER_AUTH_INTERACTIVE = True
+from ..const import (
+    AUTH_ADAPTER_ATTR_TITLE,
+    AUTH_ADAPTER_ATTR_METHOD,
+    AUTH_ADAPTER_ATTR_AUTH_FUNCTION,
+    AUTH_METHOD_USERPASS,
+)
 
-def can_handle(url:str) -> bool:
-    return "auth.vklass.se/credentials" in url
+AUTH_ADAPTERS = {
+    "manual_cookie" : {
+        AUTH_ADAPTER_ATTR_TITLE : "Vklass inloggning med användarnamn och lösenord",
+        AUTH_ADAPTER_ATTR_METHOD: AUTH_METHOD_USERPASS,
+        AUTH_ADAPTER_ATTR_AUTH_FUNCTION: "authenticate"
+    }
+}
 
-async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool:
-    raise NotImplementedError("vklass username and password login not implemented")
+async def authenticate(aiohttp_session, asyncQrNotifyHandler, credentials:dict|None) -> bool:
+    raise NotImplementedError("vklass username/password login not implemented")
+

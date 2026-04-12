@@ -2,9 +2,7 @@ import json, asyncio # noqa: E401
 from html import unescape
 from logging import getLogger
 from bs4 import BeautifulSoup
-from yarl import URL
 from urllib.parse import urlparse, parse_qs, urlunparse
-from ..const import AUTH_METHOD_BANKID_QR
 from ..http_helper import (
     setDebug, 
     handleResponse, 
@@ -13,28 +11,41 @@ from ..http_helper import (
     snippet
 )
 
+from ..const import (
+    AUTH_ADAPTER_ATTR_TITLE,
+    AUTH_ADAPTER_ATTR_METHOD,
+    AUTH_METHOD_BANKID_QR,
+    AUTH_ADAPTER_ATTR_AUTH_FUNCTION
+)
+
+AUTH_ADAPTERS = {
+    
+    "auth189" : {
+        AUTH_ADAPTER_ATTR_TITLE:            "Göteborgs stad UBF - Vårdnadshavare",
+        AUTH_ADAPTER_ATTR_METHOD:           AUTH_METHOD_BANKID_QR,
+        AUTH_ADAPTER_ATTR_AUTH_FUNCTION:    "auth189"
+    },
+    "auth190" : {
+        AUTH_ADAPTER_ATTR_TITLE :           "Göteborgs stad GSF - Vårdnadshavare",
+        AUTH_ADAPTER_ATTR_METHOD:           AUTH_METHOD_BANKID_QR,
+        AUTH_ADAPTER_ATTR_AUTH_FUNCTION:    "auth190"
+    }
+}
+
 log = getLogger(__name__)
 setDebug(False)
 
-ADAPTER_DESCRIPTION = "Inloggning för vårdnadshavare, BankID med QR"
-ADAPTER_AUTH_METHOD = AUTH_METHOD_BANKID_QR
-ADAPTER_AUTH_INTERACTIVE = True
 
-_ORG189 = "auth.vklass.se/organisation/189"
-_ORG190 = "auth.vklass.se/organisation/190"
+async def auth189 (aiohttp_session, asyncQrNotifyHandler, credentials) -> bool:
+    return await authenticate(aiohttp_session, asyncQrNotifyHandler, "189")
 
-def can_handle(url: str) -> bool:
-    return _ORG189 in url or _ORG190 in url
+async def auth190 (aiohttp_session, asyncQrNotifyHandler, credentials) -> bool:
+    return await authenticate(aiohttp_session, asyncQrNotifyHandler, "190")
 
-async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool:
 
-    org = "189"
-    if _ORG190 in authUrl:
-        org = "190"
+async def authenticate(aiohttp_session, asyncQrNotifyHandler, org) -> bool:
 
-    authData = {
-        "vklass_org": org
-    }
+    authData = {"vklass_org": org}
 
     # auth.vklass.se init steps
     await _init1_bootstrap_auth (aiohttp_session, authData)
@@ -48,10 +59,6 @@ async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool:
     # handshake bankid authentication with https://authpub.goteborg.se, 
     # to in the end, get the se.vklass.authentication cookie
     await _handshake1_handover (aiohttp_session, authData)
-
-    # await _step7_get_finish_form(aiohttp_session, authData)
-    # await _step8_post_finish_form(aiohttp_session, authData)
-    # await _step9_post_vklass_assertion(aiohttp_session, authData)
 
     return True
 

@@ -1,25 +1,35 @@
-# stub for vklass bankid login
-# interactive
-
 ####################################################################
 # adapters must define:
 # 
-# AUTH_METHOD = AUTH_METHOD_BANKID_QR | AUTH_METHOD_BANKID_PERSONNO | AUTH_METHOD_USERPASS
-# AUTH_INTERACTIVE = True | False
-# ADAPTER_DESCRIPTION = description of use case. Shown in config flow if multiple adapters match the auth url
-# def can_handle(url) -> bool
-# async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool
+# AUTH_ADAPTERS = {
+#   "adapter1": {
+#       AUTH_ADAPTER_ATTR_TITLE : "Göteborgs stad UBF - Vårdnadshavare",
+#       AUTH_ADAPTER_ATTR_METHOD: AUTH_METHOD_MANUAL_COOKIE,
+#       AUTH_ADAPTER_ATTR_AUTH_FUNCTION: "authenticate"
+#   },
+#   "anotherAdapter": {
+#       ...
+#   }
+# }
 #
 
-from ..const import AUTH_METHOD_BANKID_PERSONNO
 
-ADAPTER_DESCRIPTION = "Vklass BankID inloggning med personnummer"
-ADAPTER_AUTH_METHOD = AUTH_METHOD_BANKID_PERSONNO
-ADAPTER_AUTH_INTERACTIVE = True
+from ..const import (
+    AUTH_ADAPTER_ATTR_TITLE,
+    AUTH_ADAPTER_ATTR_METHOD,
+    AUTH_ADAPTER_ATTR_AUTH_FUNCTION,
+    AUTH_METHOD_BANKID_PERSONNO,
+)
 
+AUTH_ADAPTERS = {
+    "manual_cookie" : {
+        AUTH_ADAPTER_ATTR_TITLE : "Vklass BankID, inloggning med personnummer",
+        AUTH_ADAPTER_ATTR_METHOD: AUTH_METHOD_BANKID_PERSONNO,
+        AUTH_ADAPTER_ATTR_AUTH_FUNCTION: "authenticate"
+    }
+}
 
-def can_handle(url:str) -> bool:
-    return "auth.vklass.se/bankid" in url
-
-async def authenticate(aiohttp_session, authUrl, asyncQrNotifyHandler) -> bool:
+async def authenticate(aiohttp_session, asyncQrNotifyHandler, credentials:dict|None) -> bool:
     raise NotImplementedError("vklass bankid login not implemented")
+
+

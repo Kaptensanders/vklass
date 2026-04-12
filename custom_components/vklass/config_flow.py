@@ -9,20 +9,36 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .const import (
-    CONF_ACTION_CONTINUE_MANUAL_COOKIE,
-    CONF_ACTION_EDIT_AUTH_URL,
-    CONF_UNSUPPORTED_AUTH_URL_ACTION,
+    AUTH_ADAPTER_ATTR_TITLE,
     DOMAIN,
-    VKLASS_CONFKEY_AUTH_URL,
+    VKLASS_CONFKEY_AUTHADAPTER,
     VKLASS_CONFKEY_NAME,
-    VKLASS_CONFKEY_PASSWORD,
-    VKLASS_CONFKEY_PERSONNO,
-    VKLASS_CONFKEY_USERNAME,
 )
-from .vklassgateway import get_auth_adapter
+from .vklassgateway import get_auth_adapters
+
+
+def _get_adapter_options() -> list[dict[str, str]]:
+    options: list[dict[str, str]] = []
+
+    for adapter_key, adapter in sorted(
+        (get_auth_adapters() or {}).items(),
+        key=lambda item: str(item[1].get(AUTH_ADAPTER_ATTR_TITLE, item[0])).casefold(),
+    ):
+        options.append(
+            {
+                "value": adapter_key,
+                "label": str(adapter.get(AUTH_ADAPTER_ATTR_TITLE, adapter_key)),
+            }
+        )
+
+    return options
 
 
 def _build_name_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
@@ -38,41 +54,23 @@ def _build_name_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-def _build_auth_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
+def _build_config_schema(user_input: dict[str, Any] | None = None) -> vol.Schema:
     user_input = user_input or {}
+    adapter_options = _get_adapter_options()
+
+    default_adapter = user_input.get(VKLASS_CONFKEY_AUTHADAPTER)
+    if default_adapter is None and adapter_options:
+        default_adapter = adapter_options[0]["value"]
 
     return vol.Schema(
         {
             vol.Required(
-                VKLASS_CONFKEY_AUTH_URL,
-                default=user_input.get(VKLASS_CONFKEY_AUTH_URL, ""),
-            ): cv.string,
-            vol.Optional(
-                VKLASS_CONFKEY_USERNAME,
-                default=user_input.get(VKLASS_CONFKEY_USERNAME, ""),
-            ): cv.string,
-            vol.Optional(
-                VKLASS_CONFKEY_PASSWORD,
-                default=user_input.get(VKLASS_CONFKEY_PASSWORD, ""),
-            ): cv.string,
-            vol.Optional(
-                VKLASS_CONFKEY_PERSONNO,
-                default=user_input.get(VKLASS_CONFKEY_PERSONNO, ""),
-            ): cv.string,
-        }
-    )
-
-
-def _build_manual_cookie_warning_schema() -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(CONF_UNSUPPORTED_AUTH_URL_ACTION): SelectSelector(
+                VKLASS_CONFKEY_AUTHADAPTER,
+                default=default_adapter,
+            ): SelectSelector(
                 SelectSelectorConfig(
-                    options=[
-                        CONF_ACTION_EDIT_AUTH_URL,
-                        CONF_ACTION_CONTINUE_MANUAL_COOKIE,
-                    ],
-                    translation_key=CONF_UNSUPPORTED_AUTH_URL_ACTION,
+                    options=adapter_options,
+                    mode=SelectSelectorMode.DROPDOWN,
                 )
             ),
         }
@@ -86,7 +84,6 @@ class VklassConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._name_input: dict[str, Any] | None = None
-        self._pending_input: dict[str, Any] | None = None
 
     @staticmethod
     @callback
@@ -112,7 +109,7 @@ class VklassConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[VKLASS_CONFKEY_NAME] = "name_exists"
             else:
                 self._name_input = {VKLASS_CONFKEY_NAME: name}
-                return await self.async_step_auth()
+                return await self.async_step_config()
 
         return self.async_show_form(
             step_id="user",
@@ -120,7 +117,7 @@ class VklassConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_auth(
+    async def async_step_config(
         self, user_input: dict[str, Any] | None = None
     ):
         if self._name_input is None:
@@ -129,62 +126,21 @@ class VklassConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            auth_url = user_input[VKLASS_CONFKEY_AUTH_URL].strip()
             cleaned_input = {
-                key: value.strip() if isinstance(value, str) else value
-                for key, value in user_input.items()
+                VKLASS_CONFKEY_AUTHADAPTER: user_input[VKLASS_CONFKEY_AUTHADAPTER],
+                **self._name_input,
             }
-            cleaned_input[VKLASS_CONFKEY_AUTH_URL] = auth_url
-            cleaned_input.update(self._name_input)
-
-            if not auth_url:
-                errors[VKLASS_CONFKEY_AUTH_URL] = "required"
-            else:
-                adapter = get_auth_adapter(auth_url)
-                if adapter is None:
-                    self._pending_input = cleaned_input
-                    return await self.async_step_manual_cookie_warning()
-
-                return self.async_create_entry(
-                    title=self._name_input[VKLASS_CONFKEY_NAME],
-                    data=cleaned_input,
-                )
+            return self.async_create_entry(
+                title=self._name_input[VKLASS_CONFKEY_NAME],
+                data=cleaned_input,
+            )
 
         return self.async_show_form(
-            step_id="auth",
-            data_schema=_build_auth_schema(user_input or self._pending_input),
+            step_id="config",
+            data_schema=_build_config_schema(user_input),
             errors=errors,
             description_placeholders={
                 "name": self._name_input[VKLASS_CONFKEY_NAME],
-            },
-        )
-
-    async def async_step_manual_cookie_warning(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        if self._pending_input is None:
-            return await self.async_step_user()
-
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            if (
-                user_input.get(CONF_UNSUPPORTED_AUTH_URL_ACTION)
-                == CONF_ACTION_CONTINUE_MANUAL_COOKIE
-            ):
-                return self.async_create_entry(
-                    title=self._pending_input[VKLASS_CONFKEY_NAME],
-                    data=self._pending_input,
-                )
-
-            return await self.async_step_auth()
-
-        return self.async_show_form(
-            step_id="manual_cookie_warning",
-            data_schema=_build_manual_cookie_warning_schema(),
-            errors=errors,
-            description_placeholders={
-                "auth_url": self._pending_input[VKLASS_CONFKEY_AUTH_URL],
             },
         )
 
@@ -194,25 +150,12 @@ class VklassOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._config_entry = config_entry
-        self._pending_input: dict[str, Any] | None = None
 
     def _get_defaults(self) -> dict[str, Any]:
         return {
-            VKLASS_CONFKEY_AUTH_URL: self._config_entry.options.get(
-                VKLASS_CONFKEY_AUTH_URL,
-                self._config_entry.data.get(VKLASS_CONFKEY_AUTH_URL, ""),
-            ),
-            VKLASS_CONFKEY_USERNAME: self._config_entry.options.get(
-                VKLASS_CONFKEY_USERNAME,
-                self._config_entry.data.get(VKLASS_CONFKEY_USERNAME, ""),
-            ),
-            VKLASS_CONFKEY_PASSWORD: self._config_entry.options.get(
-                VKLASS_CONFKEY_PASSWORD,
-                self._config_entry.data.get(VKLASS_CONFKEY_PASSWORD, ""),
-            ),
-            VKLASS_CONFKEY_PERSONNO: self._config_entry.options.get(
-                VKLASS_CONFKEY_PERSONNO,
-                self._config_entry.data.get(VKLASS_CONFKEY_PERSONNO, ""),
+            VKLASS_CONFKEY_AUTHADAPTER: self._config_entry.options.get(
+                VKLASS_CONFKEY_AUTHADAPTER,
+                self._config_entry.data.get(VKLASS_CONFKEY_AUTHADAPTER),
             ),
         }
 
@@ -230,58 +173,17 @@ class VklassOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            auth_url = user_input[VKLASS_CONFKEY_AUTH_URL].strip()
             cleaned_input = {
-                key: value.strip() if isinstance(value, str) else value
-                for key, value in user_input.items()
+                VKLASS_CONFKEY_AUTHADAPTER: user_input[VKLASS_CONFKEY_AUTHADAPTER],
             }
-            cleaned_input[VKLASS_CONFKEY_AUTH_URL] = auth_url
-
-            if not auth_url:
-                errors[VKLASS_CONFKEY_AUTH_URL] = "required"
-            else:
-                adapter = get_auth_adapter(auth_url)
-                if adapter is None:
-                    self._pending_input = cleaned_input
-                    return await self.async_step_manual_cookie_warning()
-
-                self._update_entry_data(cleaned_input)
-                return self.async_create_entry(title="", data={})
+            self._update_entry_data(cleaned_input)
+            return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="init",
-            data_schema=_build_auth_schema(
-                user_input or self._pending_input or self._get_defaults()
-            ),
+            data_schema=_build_config_schema(user_input or self._get_defaults()),
             errors=errors,
             description_placeholders={
                 "name": self._config_entry.title,
-            },
-        )
-
-    async def async_step_manual_cookie_warning(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        if self._pending_input is None:
-            return await self.async_step_init()
-
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            if (
-                user_input.get(CONF_UNSUPPORTED_AUTH_URL_ACTION)
-                == CONF_ACTION_CONTINUE_MANUAL_COOKIE
-            ):
-                self._update_entry_data(self._pending_input)
-                return self.async_create_entry(title="", data={})
-
-            return await self.async_step_init()
-
-        return self.async_show_form(
-            step_id="manual_cookie_warning",
-            data_schema=_build_manual_cookie_warning_schema(),
-            errors=errors,
-            description_placeholders={
-                "auth_url": self._pending_input[VKLASS_CONFKEY_AUTH_URL],
             },
         )

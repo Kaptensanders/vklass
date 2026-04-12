@@ -1,10 +1,38 @@
-authenticate:
+login:
   target:
     entity:
       integration: vklass
       domain: sensor
-  name: Authenticate
-  description: Start authentication for the selected Vklass auth sensor.
+  name: Log in
+  description: Start login for the selected Vklass auth sensor.
+  fields:
+    username:
+      name: Username
+      description: Username for auth methods that require it.
+      selector:
+        text:
+    password:
+      name: Password
+      description: Password for auth methods that require it.
+      selector:
+        text:
+          type: password
+    personno:
+      name: Personal number
+      description: Personal number for BankID personal-number login.
+      selector:
+        text:
+    cookie:
+      name: Authentication cookie
+      description: Value of the `se.vklass.authentication` cookie for manual-cookie login.
+      selector:
+        text:
+          type: password
+    save_credentials:
+      name: Save credentials
+      description: Persist the provided credentials for future automatic re-authentication.
+      selector:
+        boolean:
 
 logout:
   target:
@@ -12,20 +40,4 @@ logout:
       integration: vklass
       domain: sensor
   name: Log out
-  description: Clear the authenticated Vklass session for the selected Vklass auth sensor.
-
-set_auth_cookie:
-  target:
-    entity:
-      integration: vklass
-      domain: sensor
-  name: Set authentication cookie
-  description: Set the `se.vklass.authentication` cookie manually for the selected Vklass auth sensor.
-  fields:
-    auth_cookie:
-      name: Authentication cookie
-      description: The value of the `se.vklass.authentication` cookie from a logged in browser.
-      required: true
-      example: abc123FFFOOOkj22JJ
-      selector:
-        text:
+  description: Clear the authenticated Vklass session and remove persisted credentials and session cookie for the selected Vklass auth sensor.

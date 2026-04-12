@@ -1,7 +1,7 @@
 import asyncio
 
-from tests.helpers import bootstrap  # noqa: F401
-from vklassgateway import (
+from test.tests.helpers import bootstrap  # noqa: F401
+from custom_components.vklass.vklassgateway import (
     VklassSession,
     VKLASS_CONFKEY_ASYNC_COOKIE_CB,
     VKLASS_CONFKEY_COOKIEFILE,

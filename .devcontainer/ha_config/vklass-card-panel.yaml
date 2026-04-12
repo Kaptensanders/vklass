@@ -5,12 +5,10 @@ views:
     path: vklass_home
     cards:
       - type: vertical-stack
-        title: Legacy
         cards:
           - type: custom:vklass-auth-card
-            entity: sensor.vklass_sandberg_vklass_auth
+            entity: sensor.vklass_manualcookie_auth
       - type: vertical-stack
-        title: Ny
         cards:
           - type: custom:vklass-auth-card
-            entity: sensor.vklass_sandberg_ny_auth
+            entity: sensor.vklass_goteborg_ubf_auth

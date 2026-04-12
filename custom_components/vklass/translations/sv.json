@@ -8,21 +8,11 @@
           "name": "Vklass enhetsnamn"
         }
       },
-      "auth": {
-        "title": "Konfigurera Vklass-inloggning",
-        "description": "Ange de inloggningsuppgifter du normalt använder med autentiserings-URL'en. Om du använder BankID QR-inloggning ska du normalt bara ange URL här.",
+      "config": {
+        "title": "Konfigurera Vklass-anslutning",
+        "description": "Välj autentiseringsadapter för `{name}`.",
         "data": {
-          "auth_url": "Autentiserings-URL",
-          "username": "Användarnamn",
-          "password": "Lösenord",
-          "personno": "Personnummer"
-        }
-      },
-      "manual_cookie_warning": {
-        "title": "Autentiserings-URL stöds inte",
-        "description": "Ingen stödd Vklass-auth-adapter hittades för `{auth_url}`.\n\nDu kan fortsätta ändå, men då måste `vklass.set_auth_cookie` användas manuellt med värdet från cookie'n `se.vklass.authentication` från en redan inloggad webbläsare.\n\nBekräfta nedan för att fortsätta med manuell cookie-hantering, eller gå tillbaka och ändra autentiserings-URL.",
-        "data": {
-          "unsupported_auth_url_action": "Nästa steg"
+          "authadapter": "Autentiseringsadapter"
         }
       }
     },
@@ -33,29 +23,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Konfigurera Vklass-inloggning",
-        "description": "Ange de inloggningsuppgifter du normalt använder med autentiserings-URL'en. Om du använder BankID QR-inloggning ska du normalt bara ange URL här.",
+        "title": "Konfigurera Vklass-anslutning",
+        "description": "Uppdatera autentiseringsadapter för `{name}`.",
         "data": {
-          "auth_url": "Autentiserings-URL",
-          "username": "Användarnamn",
-          "password": "Lösenord",
-          "personno": "Personnummer"
+          "authadapter": "Autentiseringsadapter"
         }
-      },
-      "manual_cookie_warning": {
-        "title": "Autentiserings-URL stöds inte",
-        "description": "Ingen stödd Vklass-auth-adapter hittades för `{auth_url}`.\n\nDu kan fortsätta ändå, men då måste `vklass.set_auth_cookie` användas manuellt med värdet från cookie'n `se.vklass.authentication` från en redan inloggad webbläsare.\n\nBekräfta nedan för att fortsätta med manuell cookie-hantering, eller gå tillbaka och ändra autentiserings-URL.",
-        "data": {
-          "unsupported_auth_url_action": "Nästa steg"
-        }
-      }
-    }
-  },
-  "selector": {
-    "unsupported_auth_url_action": {
-      "options": {
-        "edit_auth_url": "Gå tillbaka och ändra autentiserings-URL",
-        "continue_manual_cookie": "Fortsätt med manuell cookie-hantering"
       }
     }
   }

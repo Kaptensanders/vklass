@@ -1,15 +1,17 @@
 DOMAIN = "vklass"
-VERSION = "0.123"
+VERSION = "0.2"
 
 HA_ENTITYNAME_AUTH = "Vklass Authentication"
 
 # config flow settings
-VKLASS_CONFKEY_NAME                         = "name"
-VKLASS_CONFKEY_AUTH_URL                     = "auth_url"        # Auth starting point url
-VKLASS_CONFKEY_USERNAME                     = "username"
-VKLASS_CONFKEY_PASSWORD                     = "password"
-VKLASS_CONFKEY_PERSONNO                     = "personno"
-VKLASS_CONFKEY_KEEPALIVE_MIN                = "keepalive_minutes"
+VKLASS_CONFKEY_NAME             = "name"
+VKLASS_CONFKEY_KEEPALIVE_MIN    = "keepalive_minutes"
+VKLASS_CONFKEY_AUTHADAPTER      = "authadapter"
+
+VKLASS_CREDKEY_USERNAME         = "username"
+VKLASS_CREDKEY_PASSWORD         = "password"
+VKLASS_CREDKEY_PERSONNO         = "personno"
+VKLASS_CREDKEY_COOKIE           = "cookie"
 
 # async notification handler function keys
 VKLASS_HANDLER_ON_AUTH_EVENT                = "on_auth_event"           # async def mycallback(state:str, message:str) 
@@ -17,12 +19,11 @@ VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE         = "on_authcookie_update"    # async 
 VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE        = "on_qrcode_update"        # async def mycallback(qr_code:str)
 
 # config entry / runtime keys
-CONF_UNSUPPORTED_AUTH_URL_ACTION            = "unsupported_auth_url_action"
-CONF_ACTION_CONTINUE_MANUAL_COOKIE          = "continue_manual_cookie"
-CONF_ACTION_EDIT_AUTH_URL                   = "edit_auth_url"
+CONF_SAVE_CREDENTIALS                       = "save_credentials"         # True/False if method requires personel number, or username/password, but user may not want HA to save it. Manual input in the card instead for each auth, if False
 DEFAULT_KEEPALIVE_MINUTES                   = 10
 DATA_GATEWAY                                = "gateway"
 DATA_AUTH_STATE                             = "auth_state"
+DATA_AUTH_STATUS                            = "auth_status"
 DATA_CALLBACKS                              = "callbacks"
 DATA_SERVICES_REGISTERED                    = "services_registered"
 DATA_CONFIG_STORE                           = "config_store"
@@ -30,10 +31,8 @@ STORAGE_KEY                                 = "vklass"
 STORAGE_VERSION                             = 1
 
 # service keys
-SERVICE_AUTHENTICATE                        = "authenticate"
+SERVICE_LOGIN                               = "login"
 SERVICE_LOGOUT                              = "logout"
-SERVICE_SET_AUTH_COOKIE                     = "set_auth_cookie"
-SERVICE_ATTR_AUTH_COOKIE                    = "auth_cookie"
 
 AUTH_STATUS_INPROGRESS = "inprogress"
 AUTH_STATUS_SUCCESS = "success"
@@ -43,3 +42,19 @@ AUTH_METHOD_BANKID_QR = "bankid_qr"
 AUTH_METHOD_BANKID_PERSONNO = "bankid_personno"
 AUTH_METHOD_USERPASS = "userpass"
 AUTH_METHOD_MANUAL_COOKIE = "manual_cookie"
+
+AUTH_ADAPTER_ATTR_NAME              = "name"
+AUTH_ADAPTER_ATTR_TITLE             = "title"
+AUTH_ADAPTER_ATTR_METHOD            = "method"
+AUTH_ADAPTER_ATTR_MODULENAME        = "module"
+AUTH_ADAPTER_ATTR_AUTH_FUNCTION     = "authFn"
+
+VKLASS_URL_BASE     = "https://custodian.vklass.se"
+AUTH_COOKIE_NAME    = "se.vklass.authentication"
+AUTH_COOKIE_DOMAIN  = ".vklass.se"
+
+PERSISTED_SECRET_SENTINEL = "__PERSISTED_SECRET__"
+
+VKLASS_CONTEXT_USER = "user"
+VKLASS_CONTEXT_SCHOOL = "school"
+VKLASS_CONTEXT_STUDENTS = "students"

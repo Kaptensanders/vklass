@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import logging
 from io import BytesIO
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -14,26 +14,48 @@ import voluptuous as vol
 from homeassistant.components import frontend
 from homeassistant.components.http import HomeAssistantView, StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import ATTR_ENTITY_ID
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.const import Platform
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.storage import Store
 
+from .auth_state import (
+    STORAGE_KEY_AUTH_COOKIE,
+    STORAGE_KEY_CREDENTIALS,
+    can_entity_fetch,
+    credentials_can_seed,
+    get_auth_method,
+    get_auth_state,
+    load_stored_data,
+    next_auth_state_after_login,
+    next_auth_state_with_cookie,
+    notify_runtime_listeners,
+    resolve_login_credentials,
+    sanitize_auth_state,
+    save_entry_storage,
+)
 from .const import (
-    DATA_CONFIG_STORE,
+    AUTH_STATUS_FAIL,
+    AUTH_STATUS_INPROGRESS,
+    AUTH_STATUS_SUCCESS,
+    AUTH_METHOD_MANUAL_COOKIE,
+    CONF_SAVE_CREDENTIALS,
+    DATA_AUTH_STATE,
+    DATA_AUTH_STATUS,
+    DATA_CALLBACKS,
     DATA_GATEWAY,
     DATA_SERVICES_REGISTERED,
     DEFAULT_KEEPALIVE_MINUTES,
     DOMAIN,
-    SERVICE_ATTR_AUTH_COOKIE,
-    SERVICE_AUTHENTICATE,
+    SERVICE_LOGIN,
     SERVICE_LOGOUT,
-    SERVICE_SET_AUTH_COOKIE,
-    STORAGE_KEY,
-    STORAGE_VERSION,
+    VKLASS_CREDKEY_COOKIE,
+    VKLASS_CREDKEY_PASSWORD,
+    VKLASS_CREDKEY_PERSONNO,
+    VKLASS_CREDKEY_USERNAME,
+    VKLASS_HANDLER_ON_AUTH_EVENT,
     VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE,
     VKLASS_CONFKEY_KEEPALIVE_MIN,
     VKLASS_CONFKEY_NAME,
@@ -88,42 +110,10 @@ def _get_entry_data(hass: HomeAssistant, entry_id: str) -> dict[str, Any]:
     return domain_data.setdefault(entry_id, {})
 
 
-def _get_store(hass: HomeAssistant) -> Store:
-    domain_data = hass.data.setdefault(DOMAIN, {})
-    store = domain_data.get(DATA_CONFIG_STORE)
-    if store is None:
-        store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-        domain_data[DATA_CONFIG_STORE] = store
-    return store
-
-
-async def _async_load_stored_data(hass: HomeAssistant) -> dict[str, Any]:
-    stored_data = await _get_store(hass).async_load()
-    if isinstance(stored_data, dict):
-        return stored_data
-    return {}
-
-
-async def _async_save_entry_storage(
-    hass: HomeAssistant,
-    entry_id: str,
-    *,
-    auth_cookie: str | None = None,
-) -> None:
-    stored_data = await _async_load_stored_data(hass)
-    entry_storage = dict(stored_data.get(entry_id, {}))
-
-    if auth_cookie is None:
-        entry_storage.pop("auth_cookie", None)
-    else:
-        entry_storage["auth_cookie"] = auth_cookie
-
-    if entry_storage:
-        stored_data[entry_id] = entry_storage
-    else:
-        stored_data.pop(entry_id, None)
-
-    await _get_store(hass).async_save(stored_data)
+def can_entry_fetch(hass: HomeAssistant, entry_id: str) -> bool:
+    runtime_data = _get_entry_data(hass, entry_id)
+    gateway: VklassGateway = runtime_data[DATA_GATEWAY]
+    return can_entity_fetch(runtime_data, gateway)
 
 
 async def _async_resolve_entry_from_entity(
@@ -155,29 +145,66 @@ async def _async_resolve_entry_from_entity(
     return entry
 
 
-async def _async_handle_authenticate(hass: HomeAssistant, call: ServiceCall) -> None:
+async def _async_handle_login(hass: HomeAssistant, call: ServiceCall) -> None:
     entry = await _async_resolve_entry_from_entity(hass, call.data)
-    gateway: VklassGateway = hass.data[DOMAIN][entry.entry_id][DATA_GATEWAY]
+    runtime_data = _get_entry_data(hass, entry.entry_id)
+    gateway: VklassGateway = runtime_data[DATA_GATEWAY]
+    auth_method = get_auth_method(gateway)
+    auth_state = get_auth_state(runtime_data)
+
+    save_credentials = bool(
+        call.data.get(CONF_SAVE_CREDENTIALS, auth_state.get(CONF_SAVE_CREDENTIALS, False))
+    )
+    if auth_method == AUTH_METHOD_MANUAL_COOKIE:
+        save_credentials = False
+    persisted_credentials = auth_state.get(STORAGE_KEY_CREDENTIALS, {})
+    credentials = resolve_login_credentials(auth_method, call.data, persisted_credentials)
 
     try:
-        await gateway.authenticate(force=True, allow_interactive=True)
-    except RuntimeError as err:
+        await gateway.login(credentials, reuse_credentials=save_credentials)
+    except Exception as err:
         raise HomeAssistantError(str(err)) from None
 
+    # Login may trigger auth-cookie update handlers before control returns here,
+    # so re-read runtime state to preserve the latest persisted session cookie.
+    auth_state = get_auth_state(runtime_data)
+    runtime_data[DATA_AUTH_STATE] = next_auth_state_after_login(
+        auth_method,
+        auth_state,
+        save_credentials=save_credentials,
+        credentials=credentials,
+    )
+    auth_state = runtime_data[DATA_AUTH_STATE]
 
-async def _async_handle_set_auth_cookie(hass: HomeAssistant, call: ServiceCall) -> None:
-    entry = await _async_resolve_entry_from_entity(hass, call.data)
-    gateway: VklassGateway = hass.data[DOMAIN][entry.entry_id][DATA_GATEWAY]
-    auth_cookie = call.data[SERVICE_ATTR_AUTH_COOKIE]
-
-    await gateway.setAuthCookie(auth_cookie)
+    await save_entry_storage(
+        hass,
+        entry.entry_id,
+        auth_method,
+        save_credentials=auth_state[CONF_SAVE_CREDENTIALS],
+        credentials=auth_state[STORAGE_KEY_CREDENTIALS],
+        auth_cookie=auth_state.get(STORAGE_KEY_AUTH_COOKIE),
+    )
+    await notify_runtime_listeners(hass, entry.entry_id)
 
 
 async def _async_handle_logout(hass: HomeAssistant, call: ServiceCall) -> None:
     entry = await _async_resolve_entry_from_entity(hass, call.data)
-    gateway: VklassGateway = hass.data[DOMAIN][entry.entry_id][DATA_GATEWAY]
+    runtime_data = _get_entry_data(hass, entry.entry_id)
+    gateway: VklassGateway = runtime_data[DATA_GATEWAY]
+    auth_method = get_auth_method(gateway)
 
     await gateway.logout()
+    runtime_data[DATA_AUTH_STATE] = sanitize_auth_state(auth_method, None)
+    runtime_data[DATA_AUTH_STATUS] = AUTH_STATUS_FAIL
+    await save_entry_storage(
+        hass,
+        entry.entry_id,
+        auth_method,
+        save_credentials=False,
+        credentials={},
+        auth_cookie=None,
+    )
+    await notify_runtime_listeners(hass, entry.entry_id)
 
 
 async def _async_register_services(hass: HomeAssistant) -> None:
@@ -185,33 +212,24 @@ async def _async_register_services(hass: HomeAssistant) -> None:
     if domain_data.get(DATA_SERVICES_REGISTERED):
         return
 
-    async def async_authenticate_service(call: ServiceCall) -> None:
-        await _async_handle_authenticate(hass, call)
-
-    async def async_set_auth_cookie_service(call: ServiceCall) -> None:
-        await _async_handle_set_auth_cookie(hass, call)
+    async def async_login_service(call: ServiceCall) -> None:
+        await _async_handle_login(hass, call)
 
     async def async_logout_service(call: ServiceCall) -> None:
         await _async_handle_logout(hass, call)
 
     hass.services.async_register(
         DOMAIN,
-        SERVICE_AUTHENTICATE,
-        async_authenticate_service,
+        SERVICE_LOGIN,
+        async_login_service,
         schema=vol.Schema(
             {
                 vol.Required(ATTR_ENTITY_ID): vol.Any(str, [str]),
-            }
-        ),
-    )
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_SET_AUTH_COOKIE,
-        async_set_auth_cookie_service,
-        schema=vol.Schema(
-            {
-                vol.Required(ATTR_ENTITY_ID): vol.Any(str, [str]),
-                vol.Required(SERVICE_ATTR_AUTH_COOKIE): str,
+                vol.Optional(VKLASS_CREDKEY_USERNAME): str,
+                vol.Optional(VKLASS_CREDKEY_PASSWORD): str,
+                vol.Optional(VKLASS_CREDKEY_PERSONNO): str,
+                vol.Optional(VKLASS_CREDKEY_COOKIE): str,
+                vol.Optional(CONF_SAVE_CREDENTIALS): cv.boolean,
             }
         ),
     )
@@ -238,9 +256,8 @@ async def _async_unregister_services_if_unused(hass: HomeAssistant) -> None:
     if has_loaded_entries:
         return
 
-    hass.services.async_remove(DOMAIN, SERVICE_AUTHENTICATE)
+    hass.services.async_remove(DOMAIN, SERVICE_LOGIN)
     hass.services.async_remove(DOMAIN, SERVICE_LOGOUT)
-    hass.services.async_remove(DOMAIN, SERVICE_SET_AUTH_COOKIE)
     domain_data[DATA_SERVICES_REGISTERED] = False
     if domain_data.get(FRONTEND_REGISTERED):
         frontend.remove_extra_js_url(hass, FRONTEND_MODULE_URL)
@@ -272,23 +289,84 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_services(hass)
 
     runtime_data = _get_entry_data(hass, entry.entry_id)
-
-    async def async_on_auth_cookie_update(auth_cookie: str) -> None:
-        await _async_save_entry_storage(
-            hass,
-            entry.entry_id,
-            auth_cookie=auth_cookie,
-        )
+    runtime_data[DATA_CALLBACKS] = []
 
     gateway_config = {**entry.data, **entry.options}
     gateway_config.setdefault(VKLASS_CONFKEY_KEEPALIVE_MIN, DEFAULT_KEEPALIVE_MINUTES)
-
     gateway = VklassGateway(gateway_config)
+    runtime_data[DATA_GATEWAY] = gateway
+
+    auth_method = get_auth_method(gateway)
+    stored_data = await load_stored_data(hass)
+    runtime_data[DATA_AUTH_STATE] = sanitize_auth_state(
+        auth_method,
+        stored_data.get(entry.entry_id),
+    )
+    runtime_data[DATA_AUTH_STATUS] = AUTH_STATUS_FAIL
+
+    async def async_on_auth_cookie_update(auth_cookie: str | None) -> None:
+        await gateway._dumpoToFile(
+            auth_cookie or "",
+            "/workspaces/vklass/test/sandbox/cookie.txt",
+        )
+
+        auth_state = get_auth_state(runtime_data)
+        runtime_data[DATA_AUTH_STATE] = next_auth_state_with_cookie(
+            auth_method,
+            auth_state,
+            auth_cookie,
+        )
+        saved_state = runtime_data[DATA_AUTH_STATE]
+        await save_entry_storage(
+            hass,
+            entry.entry_id,
+            auth_method,
+            save_credentials=saved_state[CONF_SAVE_CREDENTIALS],
+            credentials=saved_state[STORAGE_KEY_CREDENTIALS],
+            auth_cookie=saved_state.get(STORAGE_KEY_AUTH_COOKIE),
+        )
+
+        await notify_runtime_listeners(hass, entry.entry_id)
+
+    async def async_on_auth_event(state: str, message: str | None) -> None:
+        runtime_data[DATA_AUTH_STATUS] = state
+
+        if state in (AUTH_STATUS_SUCCESS, AUTH_STATUS_INPROGRESS):
+            await notify_runtime_listeners(hass, entry.entry_id)
+            return
+
+        if state != AUTH_STATUS_FAIL:
+            return
+
+        auth_state = get_auth_state(runtime_data)
+        if auth_state.get(STORAGE_KEY_AUTH_COOKIE) is None:
+            return
+
+        runtime_data[DATA_AUTH_STATE] = next_auth_state_with_cookie(
+            auth_method,
+            auth_state,
+            None,
+        )
+        saved_state = runtime_data[DATA_AUTH_STATE]
+        await save_entry_storage(
+            hass,
+            entry.entry_id,
+            auth_method,
+            save_credentials=saved_state[CONF_SAVE_CREDENTIALS],
+            credentials=saved_state[STORAGE_KEY_CREDENTIALS],
+            auth_cookie=saved_state.get(STORAGE_KEY_AUTH_COOKIE),
+        )
+
+        await notify_runtime_listeners(hass, entry.entry_id)
+
+    gateway.registerHandler(
+        VKLASS_HANDLER_ON_AUTH_EVENT,
+        async_on_auth_event,
+    )
     gateway.registerHandler(
         VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE,
         async_on_auth_cookie_update,
     )
-    runtime_data[DATA_GATEWAY] = gateway
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
@@ -301,14 +379,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    stored_data = await _async_load_stored_data(hass)
-    stored_entry_data = stored_data.get(entry.entry_id, {})
-    stored_auth_cookie = stored_entry_data.get("auth_cookie")
-    if stored_auth_cookie:
-        await gateway.setAuthCookie(stored_auth_cookie)
-        _LOGGER.info("Restored stored Vklass auth cookie for entry %s", entry.entry_id)
+    auth_state = get_auth_state(runtime_data)
+    stored_auth_cookie = auth_state.get(STORAGE_KEY_AUTH_COOKIE)
+    credentials = auth_state.get(STORAGE_KEY_CREDENTIALS, {})
+    resumed_session = False
 
-    gateway.startKeepAlive()
+    if stored_auth_cookie:
+        try:
+            resumed_session = await gateway.resumeLoggedInSession(stored_auth_cookie)
+        except Exception as err:
+            _LOGGER.warning(
+                "Could not resume persisted Vklass session for entry %s: %s",
+                entry.entry_id,
+                err,
+            )
+
+    if (
+        not resumed_session
+        and auth_state.get(CONF_SAVE_CREDENTIALS)
+        and credentials_can_seed(auth_method, credentials)
+    ):
+        try:
+            await gateway.login(credentials, reuse_credentials=True)
+        except Exception as err:
+            _LOGGER.warning(
+                "Could not restore persisted Vklass credentials for entry %s: %s",
+                entry.entry_id,
+                err,
+            )
+
     return True
 
 

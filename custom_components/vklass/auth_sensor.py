@@ -11,14 +11,24 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
+from .auth_state import STORAGE_KEY_CREDENTIALS
 from .const import (
+    AUTH_ADAPTER_ATTR_METHOD,
+    AUTH_ADAPTER_ATTR_NAME,
+    AUTH_ADAPTER_ATTR_TITLE,
+    AUTH_METHOD_USERPASS,
     AUTH_STATUS_FAIL,
     AUTH_STATUS_INPROGRESS,
     AUTH_STATUS_SUCCESS,
+    CONF_SAVE_CREDENTIALS,
+    DATA_AUTH_STATE,
+    DATA_CALLBACKS,
     DATA_GATEWAY,
     DOMAIN,
     HA_ENTITYNAME_AUTH,
-    VKLASS_CONFKEY_AUTH_URL,
+    VKLASS_CREDKEY_PASSWORD,
+    VKLASS_CREDKEY_PERSONNO,
+    VKLASS_CREDKEY_USERNAME,
     VKLASS_CONFKEY_NAME,
     VKLASS_HANDLER_ON_AUTH_EVENT,
     VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
@@ -31,8 +41,9 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities,
 ) -> None:
-    gateway: VklassGateway = hass.data[DOMAIN][entry.entry_id][DATA_GATEWAY]
-    async_add_entities([VklassAuthSensor(entry, gateway)])
+    runtime_data = hass.data[DOMAIN][entry.entry_id]
+    gateway: VklassGateway = runtime_data[DATA_GATEWAY]
+    async_add_entities([VklassAuthSensor(entry, gateway, runtime_data)])
 
 
 class VklassAuthSensor(SensorEntity):
@@ -41,17 +52,23 @@ class VklassAuthSensor(SensorEntity):
     _attr_icon = "mdi:shield-account"
     _attr_should_poll = False
 
-    def __init__(self, entry: ConfigEntry, gateway: VklassGateway) -> None:
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        gateway: VklassGateway,
+        runtime_data: dict[str, Any],
+    ) -> None:
         self._entry = entry
         self._gateway = gateway
+        self._runtime_data = runtime_data
         self._config = {**entry.data, **entry.options}
         self._name = entry.title or self._config.get(VKLASS_CONFKEY_NAME, "Vklass")
         self._state = AUTH_STATUS_FAIL
         self._message: str | None = None
         self._qr_code: str | None = None
         self._last_success: str | None = None
-        self._auth_method, self._auth_interactive = gateway.getAuthMethod()
         self._handlers_registered = False
+        self._runtime_callback_registered = False
 
         self._attr_unique_id = f"{entry.entry_id}_auth"
         self._attr_name = HA_ENTITYNAME_AUTH
@@ -63,12 +80,27 @@ class VklassAuthSensor(SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        auth_adapter = self._gateway.getAuthAdapter()
+        auth_state = self._runtime_data.get(DATA_AUTH_STATE, {})
+        credentials = auth_state.get(STORAGE_KEY_CREDENTIALS, {})
+
         attributes: dict[str, Any] = {
-            "auth_url": self._config.get(VKLASS_CONFKEY_AUTH_URL),
-            "auth_method": self._auth_method,
-            "auth_interactive": self._auth_interactive,
+            "device_name": self._name,
+            "auth_adapter": auth_adapter.get(AUTH_ADAPTER_ATTR_NAME),
+            "auth_adapter_title": auth_adapter.get(AUTH_ADAPTER_ATTR_TITLE),
+            "auth_method": auth_adapter.get(AUTH_ADAPTER_ATTR_METHOD),
+            "save_credentials": bool(auth_state.get(CONF_SAVE_CREDENTIALS, False)),
         }
 
+        if auth_adapter.get(AUTH_ADAPTER_ATTR_METHOD) == AUTH_METHOD_USERPASS:
+            attributes["persisted_password"] = bool(
+                credentials.get(VKLASS_CREDKEY_PASSWORD)
+            )
+
+        if username := credentials.get(VKLASS_CREDKEY_USERNAME):
+            attributes["username"] = username
+        if personno := credentials.get(VKLASS_CREDKEY_PERSONNO):
+            attributes["personno"] = personno
         if self._qr_code is not None:
             attributes["qr_code"] = self._qr_code
         if self._message is not None:
@@ -88,18 +120,27 @@ class VklassAuthSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self) -> None:
-        if self._handlers_registered:
-            return
+        if not self._handlers_registered:
+            self._gateway.registerHandler(
+                VKLASS_HANDLER_ON_AUTH_EVENT,
+                self._async_on_auth_event,
+            )
+            self._gateway.registerHandler(
+                VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
+                self._async_on_qr_code_update,
+            )
+            self._handlers_registered = True
 
-        self._gateway.registerHandler(
-            VKLASS_HANDLER_ON_AUTH_EVENT,
-            self._async_on_auth_event,
-        )
-        self._gateway.registerHandler(
-            VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
-            self._async_on_qr_code_update,
-        )
-        self._handlers_registered = True
+        if not self._runtime_callback_registered:
+            callbacks = self._runtime_data.setdefault(DATA_CALLBACKS, [])
+            callbacks.append(self._async_on_runtime_update)
+            self._runtime_callback_registered = True
+
+            def _remove_runtime_callback() -> None:
+                if self._async_on_runtime_update in callbacks:
+                    callbacks.remove(self._async_on_runtime_update)
+
+            self.async_on_remove(_remove_runtime_callback)
 
     async def _async_on_auth_event(
         self,
@@ -118,4 +159,7 @@ class VklassAuthSensor(SensorEntity):
 
     async def _async_on_qr_code_update(self, qr_code: str) -> None:
         self._qr_code = qr_code
+        self.async_write_ha_state()
+
+    async def _async_on_runtime_update(self) -> None:
         self.async_write_ha_state()

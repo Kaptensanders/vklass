@@ -8,21 +8,11 @@
           "name": "Vklass device name"
         }
       },
-      "auth": {
-        "title": "Configure Vklass login credentials",
-        "description": "Add the login information you normally use the authentication URL. If you use BankID QR code login you normally would not enter any information here.",
+      "config": {
+        "title": "Configure Vklass connection",
+        "description": "Choose the authentication adapter for `{name}`.",
         "data": {
-          "auth_url": "Authentication URL",
-          "username": "Username",
-          "password": "Password",
-          "personno": "Personal number"
-        }
-      },
-      "manual_cookie_warning": {
-        "title": "Unsupported authentication URL",
-        "description": "No supported Vklass authentication adapter was found for `{auth_url}`.\n\nYou can continue anyway, but then `vklass.set_auth_cookie` must be used manually with the `se.vklass.authentication` cookie value from a logged in browser.\n\nConfirm below to continue with manual cookie handling, or go back and change the authentication URL.",
-        "data": {
-          "unsupported_auth_url_action": "Next step"
+          "authadapter": "Authentication adapter"
         }
       }
     },
@@ -33,29 +23,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure Vklass login credentials",
-        "description": "Add the login information you normally use the authentication URL. If you use BankID QR code login you normally would not enter any information here.",
+        "title": "Configure Vklass connection",
+        "description": "Update the authentication adapter for `{name}`.",
         "data": {
-          "auth_url": "Authentication URL",
-          "username": "Username",
-          "password": "Password",
-          "personno": "Personal number"
+          "authadapter": "Authentication adapter"
         }
-      },
-      "manual_cookie_warning": {
-        "title": "Unsupported authentication URL",
-        "description": "No supported Vklass authentication adapter was found for `{auth_url}`.\n\nYou can continue anyway, but then `vklass.set_auth_cookie` must be used manually with the `se.vklass.authentication` cookie value from a logged in browser.\n\nConfirm below to continue with manual cookie handling, or go back and change the authentication URL.",
-        "data": {
-          "unsupported_auth_url_action": "Next step"
-        }
-      }
-    }
-  },
-  "selector": {
-    "unsupported_auth_url_action": {
-      "options": {
-        "edit_auth_url": "Go back and edit authentication URL",
-        "continue_manual_cookie": "Continue with manual cookie handling"
       }
     }
   }

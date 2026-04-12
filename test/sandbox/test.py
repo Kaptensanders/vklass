@@ -1,13 +1,12 @@
 import sys, os, json, aiohttp, asyncio, logging
 from datetime import date, timedelta
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.insert(0, os.path.join(ROOT, "test"))
+sys.path.insert(0, ROOT)
 
-from tests.helpers import bootstrap  # noqa: F401
+from test.tests.helpers import bootstrap  # noqa: F401
 
-from vklassgateway import ( # noqa: E402
+from custom_components.vklass.vklassgateway import ( # noqa: E402
     VklassGateway,
-    VKLASS_CONFKEY_AUTH_URL,
     VKLASS_CONFKEY_PERSONNO,
     VKLASS_CONFKEY_USERNAME,
     VKLASS_CONFKEY_PASSWORD,
@@ -17,6 +16,8 @@ from vklassgateway import ( # noqa: E402
     VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
     VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE,
 
+    VKLASS_CONFKEY_AUTHADAPTER_MODULENAME,
+    VKLASS_CONFKEY_AUTHADAPTER_ADAPTERNAME
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +26,7 @@ AUT_COOKIE = "__DISABLED__"
 COOKIE_FILE = "/workspaces/vklass/test/sandbox/cookie.txt"
 
 async def onAuthUpdate(state:str, message:str|None = None):
-    print (f"onAuthUpdate callback {state}: {message}")
+    print (f"onAuthUpdate callback: {state}, {message}")
 
 async def onCookieUpdate (cookie):
     # save to cookie file, for use on load
@@ -37,13 +38,12 @@ async def onQrUpdate (qrCode:str):
     print (f"QR code update: {qrCode}")
 
 
-def loadCookieFromFile():
+async def loadCookieFromFile():
     if not os.path.exists(COOKIE_FILE):
         return None
 
     with open(COOKIE_FILE, "r") as f:
         return f.read().strip()
-
 
 '''
 config = {
@@ -57,7 +57,8 @@ config = {
 
 configs = {
     "manual" : {
-        VKLASS_CONFKEY_AUTH_URL                     : "https://authpub.goteborg.se/sp/sps/eidpub/saml20/logininitial?RequestBinding=HTTPPost&ResponseBinding=HTTPPost&Target=https%3A%2F%2Fauthpub.goteborg.se%2Fidp%2Fsps%2Fauth%3FFedId%3Duuidc69b10fc-018d-1e46-bd45-84b46fd723a9",
+        VKLASS_CONFKEY_AUTHADAPTER_MODULENAME:      "manual_cookie",
+        VKLASS_CONFKEY_AUTHADAPTER_ADAPTERNAME:     "manual_cookie",
         VKLASS_CONFKEY_USERNAME                     : None,
         VKLASS_CONFKEY_PASSWORD                     : None,
         VKLASS_CONFKEY_KEEPALIVE_MIN                : 1
@@ -80,45 +81,36 @@ async def main ():
         else:
             confName = sys.argv[1]
 
-    async with aiohttp.ClientSession() as session:
+    gw = None
 
-        gw = VklassGateway(configs[confName], session)
+    try:
+
+        gw = VklassGateway(configs[confName])
         gw.registerHandler (VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE, onQrUpdate)
         gw.registerHandler (VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE, onCookieUpdate)
         gw.registerHandler (VKLASS_HANDLER_ON_AUTH_EVENT, onAuthUpdate)
 
-
         gw.DEBUG = True
         gw.DUMP_TO_FILE = True
-        if cookie := loadCookieFromFile():
+        if cookie := await loadCookieFromFile():
             print(f"Loaded cookie from file {COOKIE_FILE}")
-            await gw.setAuthCookie(cookie)
+            await gw.authenticate(data=cookie)
         else:
-            await gw.setAuthCookie(AUT_COOKIE)
+            await gw.authenticate(data=AUT_COOKIE)
 
-        stop_event = None 
+        if keepalive:
+            gw.startKeepAlive()
 
         calStartDate = date.today().isoformat()
         calEndDate = (date.today() + timedelta(weeks=4)).isoformat()
         calendar = await gw.getCalendar(calStartDate, calEndDate)
-        exit(0)
-
-        if keepalive:
-            stop_event = asyncio.Event()
-            gw.startKeepAlive()
 
 
-        calendar = await gw.getCalendar(calStartDate, calEndDate)
-
-        if keepalive:
-            try:
-                await stop_event.wait()
-            except asyncio.CancelledError:
-                return
-            finally:
-                await gw.stopKeepAlive()
-            
-
+    except asyncio.CancelledError:
+        return
+    finally:
+        if gw:
+            await gw.shutdown()    
 
 
 
