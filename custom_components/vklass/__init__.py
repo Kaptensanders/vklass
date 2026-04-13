@@ -7,12 +7,13 @@ from io import BytesIO
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from aiohttp import web
 import voluptuous as vol
 
-from homeassistant.components import frontend
 from homeassistant.components.http import HomeAssistantView, StaticPathConfig
+from homeassistant.components.lovelace.const import CONF_RESOURCE_TYPE_WS, LOVELACE_DATA, MODE_STORAGE
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -67,8 +68,10 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR]
 FRONTEND_URL_BASE = "/vklass"
-FRONTEND_MODULE_URL = f"{FRONTEND_URL_BASE}/vklass-auth-card.js?v={VERSION}"
+FRONTEND_MODULE_PATH = f"{FRONTEND_URL_BASE}/vklass-auth-card.js"
+FRONTEND_MODULE_URL = f"{FRONTEND_MODULE_PATH}?v={VERSION}"
 FRONTEND_REGISTERED = "frontend_registered"
+FRONTEND_RESOURCE_SYNCED = "frontend_resource_synced"
 
 
 def _render_qr_svg(data: str) -> bytes:
@@ -116,9 +119,50 @@ def can_entry_fetch(hass: HomeAssistant, entry_id: str) -> bool:
     return can_entity_fetch(runtime_data, gateway)
 
 
-async def _async_resolve_entry_from_entity(
-    hass: HomeAssistant, service_data: Mapping[str, Any]
-) -> ConfigEntry:
+def _strip_url_query(url: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+
+
+async def _async_ensure_lovelace_resource(hass: HomeAssistant) -> None:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get(FRONTEND_RESOURCE_SYNCED) == FRONTEND_MODULE_URL:
+        return
+
+    lovelace_data = hass.data.get(LOVELACE_DATA)
+    if lovelace_data is None:
+        return
+
+    if lovelace_data.resource_mode != MODE_STORAGE:
+        return
+
+    resources = lovelace_data.resources
+    if not resources.loaded:
+        await resources.async_load()
+        resources.loaded = True
+
+    matching_items = [item for item in resources.async_items() if _strip_url_query(item["url"]) == FRONTEND_MODULE_PATH]
+    if len(matching_items) > 1:
+        _LOGGER.warning(
+            "Multiple Lovelace resources exist for %s. Fixing by removing all and re-adding only one correct entry.", FRONTEND_MODULE_PATH
+        )
+        for item in matching_items:
+            await resources.async_delete_item(item["id"])
+        matching_items = []
+
+    primary_item = matching_items[0] if matching_items else None
+
+    if primary_item is None:
+        _LOGGER.info("Creating Lovelace resource for Vklass card %s", FRONTEND_MODULE_PATH)
+        await resources.async_create_item({CONF_RESOURCE_TYPE_WS: "module", "url": FRONTEND_MODULE_URL})
+    elif primary_item.get("url") != FRONTEND_MODULE_URL or primary_item.get("type") != "module":
+        _LOGGER.info("Updating Lovelace resource for Vklass card to version %s", VERSION)
+        await resources.async_update_item(primary_item["id"], {CONF_RESOURCE_TYPE_WS: "module", "url": FRONTEND_MODULE_URL})
+
+    domain_data[FRONTEND_RESOURCE_SYNCED] = FRONTEND_MODULE_URL
+
+
+async def _async_resolve_entry_from_entity(hass: HomeAssistant, service_data: Mapping[str, Any]) -> ConfigEntry:
     entity_ids = service_data.get(ATTR_ENTITY_ID)
     if entity_ids is None:
         raise ValueError("Service call must target exactly one Vklass auth entity")
@@ -152,9 +196,7 @@ async def _async_handle_login(hass: HomeAssistant, call: ServiceCall) -> None:
     auth_method = get_auth_method(gateway)
     auth_state = get_auth_state(runtime_data)
 
-    save_credentials = bool(
-        call.data.get(CONF_SAVE_CREDENTIALS, auth_state.get(CONF_SAVE_CREDENTIALS, False))
-    )
+    save_credentials = bool(call.data.get(CONF_SAVE_CREDENTIALS, auth_state.get(CONF_SAVE_CREDENTIALS, False)))
     if auth_method == AUTH_METHOD_MANUAL_COOKIE:
         save_credentials = False
     persisted_credentials = auth_state.get(STORAGE_KEY_CREDENTIALS, {})
@@ -249,10 +291,7 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 
 async def _async_unregister_services_if_unused(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
-    has_loaded_entries = any(
-        isinstance(value, dict) and DATA_GATEWAY in value
-        for value in domain_data.values()
-    )
+    has_loaded_entries = any(isinstance(value, dict) and DATA_GATEWAY in value for value in domain_data.values())
     if has_loaded_entries:
         return
 
@@ -260,7 +299,6 @@ async def _async_unregister_services_if_unused(hass: HomeAssistant) -> None:
     hass.services.async_remove(DOMAIN, SERVICE_LOGOUT)
     domain_data[DATA_SERVICES_REGISTERED] = False
     if domain_data.get(FRONTEND_REGISTERED):
-        frontend.remove_extra_js_url(hass, FRONTEND_MODULE_URL)
         domain_data[FRONTEND_REGISTERED] = False
 
 
@@ -270,10 +308,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         return
 
     frontend_path = Path(__file__).parent / "frontend"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(FRONTEND_URL_BASE, str(frontend_path), cache_headers=False)]
-    )
-    frontend.add_extra_js_url(hass, FRONTEND_MODULE_URL)
+    await hass.http.async_register_static_paths([StaticPathConfig(FRONTEND_URL_BASE, str(frontend_path), cache_headers=False)])
     hass.http.register_view(VklassQrCodeView(hass))
     domain_data[FRONTEND_REGISTERED] = True
 
@@ -287,6 +322,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_services(hass)
+    await _async_ensure_lovelace_resource(hass)
 
     runtime_data = _get_entry_data(hass, entry.entry_id)
     runtime_data[DATA_CALLBACKS] = []
@@ -394,11 +430,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 err,
             )
 
-    if (
-        not resumed_session
-        and auth_state.get(CONF_SAVE_CREDENTIALS)
-        and credentials_can_seed(auth_method, credentials)
-    ):
+    if not resumed_session and auth_state.get(CONF_SAVE_CREDENTIALS) and credentials_can_seed(auth_method, credentials):
         try:
             await gateway.login(credentials, reuse_credentials=True)
         except Exception as err:

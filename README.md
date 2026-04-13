@@ -35,3 +35,19 @@ The following should be treated as abandoned design ideas, not the target user e
 ## Scope for version 1.0
 
 Version 1.0 is focused on calendar import. The gateway and login flow are being built first so that later Home Assistant entities can depend on a real authenticated Vklass session rather than external cookie workarounds.
+
+## Lovelace auth card resource loading
+
+The integration includes the `vklass-auth-card` Lovelace card.
+
+If your Home Assistant Lovelace resources are managed in storage mode, the card resource can be registered automatically by the integration.
+
+If your Lovelace resources are managed in YAML mode, you must add the card resource explicitly in your Lovelace YAML configuration, just like other custom Lovelace resources such as `layout-card.js`.
+
+Example:
+
+```yaml
+resources:
+  - url: /vklass/vklass-auth-card.js?v=0.25
+    type: module
+```

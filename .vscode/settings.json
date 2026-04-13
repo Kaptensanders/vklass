@@ -62,8 +62,10 @@
     ".vscode_cache",
     ".codex_cache"
   ],
+  "ruff.lineLength": 150,
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
   },
   // Added --no-cov to work around TypeError: message must be set
   // https://github.com/microsoft/vscode-python/issues/14067
