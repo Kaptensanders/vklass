@@ -1,5 +1,5 @@
 DOMAIN = "vklass"
-VERSION = "0.2"
+VERSION = "0.25"
 
 HA_ENTITYNAME_AUTH = "Vklass Authentication"
 

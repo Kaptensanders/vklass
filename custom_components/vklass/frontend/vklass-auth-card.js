@@ -410,12 +410,14 @@ class VklassAuthCard extends HTMLElement {
 
   _renderHeader(stateObj, authMethod, fallbackTitle) {
     const title = this._getCardTitle(stateObj, fallbackTitle);
-    const subtitle = this._getCardSubtitle(stateObj, authMethod);
+    const subtitles = this._getCardSubtitles(stateObj, authMethod);
 
     return `
       <div class="header-block">
         <div class="header-title">${escapeHtml(title)}</div>
-        ${subtitle ? `<div class="header-subtitle">${escapeHtml(subtitle)}</div>` : ""}
+        ${subtitles
+          .map((subtitle) => `<div class="header-subtitle">${escapeHtml(subtitle)}</div>`)
+          .join("")}
       </div>
     `;
   }
@@ -429,17 +431,29 @@ class VklassAuthCard extends HTMLElement {
     );
   }
 
-  _getCardSubtitle(stateObj, authMethod) {
+  _getCardSubtitles(stateObj, authMethod) {
     if (
       authMethod !== AUTH_METHOD_BANKID_QR &&
       authMethod !== AUTH_METHOD_BANKID_PERSONNO &&
       authMethod !== AUTH_METHOD_USERPASS &&
       authMethod !== AUTH_METHOD_MANUAL_COOKIE
     ) {
-      return "";
+      return [];
     }
 
-    return stateObj?.attributes?.auth_adapter_title || "";
+    const subtitles = [];
+    const adapterTitle = String(stateObj?.attributes?.auth_adapter_title || "").trim();
+    const user = String(stateObj?.attributes?.user || "").trim();
+
+    if (adapterTitle) {
+      subtitles.push(adapterTitle);
+    }
+
+    if (stateObj?.state === AUTH_STATUS_SUCCESS && user) {
+      subtitles.push(user);
+    }
+
+    return subtitles;
   }
 
   _renderBody(stateObj, authMethod, state, message) {

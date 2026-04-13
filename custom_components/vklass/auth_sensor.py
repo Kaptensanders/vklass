@@ -83,9 +83,17 @@ class VklassAuthSensor(SensorEntity):
         auth_adapter = self._gateway.getAuthAdapter()
         auth_state = self._runtime_data.get(DATA_AUTH_STATE, {})
         credentials = auth_state.get(STORAGE_KEY_CREDENTIALS, {})
+        user = ""
+
+        if self._state == AUTH_STATUS_SUCCESS:
+            try:
+                user = self._gateway.getUserName()
+            except RuntimeError:
+                user = ""
 
         attributes: dict[str, Any] = {
             "device_name": self._name,
+            "user": user,
             "auth_adapter": auth_adapter.get(AUTH_ADAPTER_ATTR_NAME),
             "auth_adapter_title": auth_adapter.get(AUTH_ADAPTER_ATTR_TITLE),
             "auth_method": auth_adapter.get(AUTH_ADAPTER_ATTR_METHOD),

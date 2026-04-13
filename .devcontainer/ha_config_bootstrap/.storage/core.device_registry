@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "minor_version": 12,
+  "key": "core.device_registry",
+  "data": {
+    "devices": [
+      {"area_id":null,"config_entries":["01KMJA5SW7NC6CVN7D72JVY1T3"],"config_entries_subentries":{"01KMJA5SW7NC6CVN7D72JVY1T3":[null]},"configuration_url":null,"connections":[],"created_at":"2026-03-25T10:55:49.130491+00:00","disabled_by":null,"entry_type":"service","hw_version":null,"id":"e98e5ca2e9c0c1c040e75f5db8c6d9e9","identifiers":[["sun","01KMJA5SW7NC6CVN7D72JVY1T3"]],"labels":[],"manufacturer":null,"model":null,"model_id":null,"modified_at":"2026-03-25T10:55:49.130518+00:00","name_by_user":null,"name":"Sun","primary_config_entry":"01KMJA5SW7NC6CVN7D72JVY1T3","serial_number":null,"sw_version":null,"via_device_id":null},
+      {"area_id":null,"config_entries":["01KMJA5SZ1XTJ2JGE5124V4BEV"],"config_entries_subentries":{"01KMJA5SZ1XTJ2JGE5124V4BEV":[null]},"configuration_url":"homeassistant://config/backup","connections":[],"created_at":"2026-03-25T10:55:49.222571+00:00","disabled_by":null,"entry_type":"service","hw_version":null,"id":"268d45d5a3a3d75da761da1aa808550a","identifiers":[["backup","backup_manager"]],"labels":[],"manufacturer":"Home Assistant","model":"Home Assistant Backup","model_id":null,"modified_at":"2026-03-25T10:55:49.222606+00:00","name_by_user":null,"name":"Backup","primary_config_entry":"01KMJA5SZ1XTJ2JGE5124V4BEV","serial_number":null,"sw_version":"2026.3.4","via_device_id":null},
+      {"area_id":null,"config_entries":["01KP15EQ49D6KEBZPZC4JBKV0C"],"config_entries_subentries":{"01KP15EQ49D6KEBZPZC4JBKV0C":[null]},"configuration_url":null,"connections":[],"created_at":"2026-04-12T15:37:36.651695+00:00","disabled_by":null,"entry_type":null,"hw_version":null,"id":"ad6dda00fcc52bbd19959e9b2ceb4a61","identifiers":[["vklass","01KP15EQ49D6KEBZPZC4JBKV0C"]],"labels":[],"manufacturer":"Vklass","model":"Vklass","model_id":null,"modified_at":"2026-04-12T15:37:36.651725+00:00","name_by_user":null,"name":"ManualCookie","primary_config_entry":"01KP15EQ49D6KEBZPZC4JBKV0C","serial_number":null,"sw_version":null,"via_device_id":null},
+      {"area_id":null,"config_entries":["01KP15H5SVS01JDKX8SVVH6SFH"],"config_entries_subentries":{"01KP15H5SVS01JDKX8SVVH6SFH":[null]},"configuration_url":null,"connections":[],"created_at":"2026-04-12T15:38:57.211996+00:00","disabled_by":null,"entry_type":null,"hw_version":null,"id":"544dc8556935478b589023233af0d8ee","identifiers":[["vklass","01KP15H5SVS01JDKX8SVVH6SFH"]],"labels":[],"manufacturer":"Vklass","model":"Vklass","model_id":null,"modified_at":"2026-04-12T15:38:57.212025+00:00","name_by_user":null,"name":"Göteborg UBF","primary_config_entry":"01KP15H5SVS01JDKX8SVVH6SFH","serial_number":null,"sw_version":null,"via_device_id":null}
+    ],
+    "deleted_devices": []
+  }
+}

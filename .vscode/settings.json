@@ -1,8 +1,69 @@
 {
-  // Please keep this file in sync with settings in home-assistant/.devcontainer/devcontainer.json
-  "editor.defaultFormatter": "ms-python.black-formatter",
+  "python.analysis.include": [
+    "custom_components",
+    "test",
+    "vklass-card"
+  ],
+  "python.analysis.exclude": [
+    "**/.codex_cache/**",
+    "**/.vscode_cache/**",
+    "**/.devcontainer/**",
+    "**/.git/**",
+    "**/.github/**",
+    "**/.vscode/**",
+    "**/.pytest_cache/**",
+    "**/temp/**",
+    "**/node_modules/**"
+  ],
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/temp": true,
+    "**/node_modules": true,
+    "**/.vscode_cache": true,
+    "**/.codex_cache": true
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/temp": true,
+    "**/node_modules": true,
+    "**/.vscode_cache": true,
+    "**/.codex_cache": true
+  },
+  "files.watcherExclude": {
+    "**/.git/**": true,
+    "**/.svn/**": true,
+    "**/.hg/**": true,
+    "**/CVS/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/temp/**": true,
+    "**/node_modules/**": true,
+    "**/.vscode_cache/**": true,
+    "**/.codex_cache/**": true
+  },
+  "ruff.exclude": [
+    ".pytest_cache",
+    "temp",
+    "vklass-card/node_modules",
+    ".vscode_cache",
+    ".codex_cache"
+  ],
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
+    "editor.defaultFormatter": "charliermarsh.ruff"
   },
   // Added --no-cov to work around TypeError: message must be set
   // https://github.com/microsoft/vscode-python/issues/14067

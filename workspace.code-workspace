@@ -1,6 +1,5 @@
 {
 	"folders": [
-
 		{
 			"path": "."
 		},
@@ -13,13 +12,12 @@
 	],
 	"settings": {
 		"python.analysis.exclude": [
-		"**/ha_core/**",
-		"**/ha_config/**",
+			"**/ha_core/**",
+			"**/ha_config/**"
 		],
-
 		"ruff.exclude": [
-		"ha_core",
-		"ha_config"
+			"ha_core",
+			"ha_config"
 		]
 	},
 	"extensions": {

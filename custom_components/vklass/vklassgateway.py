@@ -200,9 +200,6 @@ class ObjBase(ABC):
 
     async def _dumpoToFile(self, data, fileName = None):
         
-        if not self.DUMP_TO_FILE:
-            return
-        
         ext = "txt"
         if isinstance(data, (dict, list)):
             ext = "json"
@@ -628,9 +625,13 @@ class VklassGateway(VklassSession):
     def __init__(self, config):
         super().__init__(config)
 
-    def getUser(self) -> dict | str:
+    def getUserName(self) -> str:
         context = self.getVklassContext()
-        return context[VKLASS_CONTEXT_USER]
+        return next(iter(context[VKLASS_CONTEXT_USER].values()))
+    
+    def getUserId(self) -> str:
+        context = self.getVklassContext()
+        return next(iter(context[VKLASS_CONTEXT_USER].keys()))
 
     def getStudents(self, name=None) -> dict | str:
         context = self.getVklassContext()

@@ -6,3 +6,7 @@ Thumbs.db
 skolmat/
 test/sandbox/cookie.txt
 *.har
+.codex_cache/*
+!.codex_cache/readme.md
+.vscode_cache/*
+!.vscode_cache/readme.md
