@@ -58,3 +58,15 @@ PERSISTED_SECRET_SENTINEL = "__PERSISTED_SECRET__"
 VKLASS_CONTEXT_USER = "user"
 VKLASS_CONTEXT_SCHOOL = "school"
 VKLASS_CONTEXT_STUDENTS = "students"
+
+
+# calendar support
+
+CALENDAR_EVENTTYPES = {
+    1: "Lektioner" ,
+    2: "Tilldelade uppgifter",
+    4: "Händelser",
+    8: "Lediga dagar",
+    16: "Planering",
+    32: "Praktik"
+}

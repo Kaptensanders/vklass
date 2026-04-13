@@ -10,3 +10,5 @@ test/sandbox/cookie.txt
 !.codex_cache/readme.md
 .vscode_cache/*
 !.vscode_cache/readme.md
+test/data/*
+!test/data/.gitkeep

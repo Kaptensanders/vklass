@@ -1,6 +1,6 @@
 mode: storage
 dashboards:
-  lovelace-padpanel:
+  lovelace-panel:
     mode: yaml
     title: Vklass
     icon: mdi:home
