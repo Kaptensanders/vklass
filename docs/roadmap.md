@@ -17,7 +17,7 @@ Status: **Finished**
 * Folder structure and stub files
 
 ### 2. The VklassGateway component - fundamentals
-Status: **In Progress**
+Status: **Complete**
 * Basic logic and structure of the gateway component in `custom_components/vklass/vklassgateway.py`
 * Real authentication entry point in `VklassSession`
 * Basic, but good foundation for auth adapter handling
@@ -31,21 +31,21 @@ Status: **In Progress**
 * Student discovery and keepalive loop
 
 ### 3. Home Assistant Vklass integration, phase 1
-Status: **Current**
+Status: **Complete**
 * **Home Assistant integration BASE** design implementation only
 * Some stub code exist as example, design pattern guidance, replace with real implementation 
 * (DONE) Basic robust integration design, shared vklassgateway and the Vklass device
 * (DONE) Config flow for supporting auth methods (implied in const.py)
 * The Vklass sensor for authentication
+* Home Assistant presentation of BankID QR updates during login
 
 ### 4. Lovelace companion card for QR auth
-Status: **Current**
+Status: **Complete**
 * according do design spec
 
 
 ### 5. Home Assistant Vklass integration, phase 2
-Status: **Pending**
-* Home Assistant presentation of BankID QR updates during login
+Status: **Current**
 * Vklass calendar entity, with calendar entities per student and later event-type separation
 
 

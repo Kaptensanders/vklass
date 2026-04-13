@@ -64,9 +64,17 @@ VKLASS_CONTEXT_STUDENTS = "students"
 
 CALENDAR_EVENTTYPES = {
     1: "Lektioner" ,
-    2: "Tilldelade uppgifter",
+    2: "Uppgifter",
     4: "Händelser",
     8: "Lediga dagar",
     16: "Planering",
     32: "Praktik"
 }
+
+CAL_ATTR_UID        = "uid"             # the detailUrl from vklass event
+CAL_ATTR_START      = "start"           # date for allDay=true, dateTime for allDay=false
+CAL_ATTR_END        = "end"             # date for allDay=true, dateTime for allDay=false. For allDay event set to start + 1 day
+CAL_ATTR_SUMMARY    = "summary"         # title from json
+CAL_ATTR_DESCR      = "description"     # text from json, normalized
+CAL_ATTR_LOCATION   = "location"        # location from json
+

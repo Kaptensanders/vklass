@@ -105,7 +105,6 @@ async def main():
         calEndDate = date.today() + timedelta(weeks=8)
         calendar = await gw.getCalendar(calStartDate, calEndDate)
 
-
         if keepalive:
             while True:
                 await asyncio.sleep(1)
