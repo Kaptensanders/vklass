@@ -21,14 +21,14 @@ from .const import (
     VKLASS_CONFKEY_AUTHADAPTER,
     VKLASS_CONFKEY_NAME,
 )
-from .vklassgateway import get_auth_adapters
+from .gateway_helpers import auth_adapters_get_all
 
 
 def _get_adapter_options() -> list[dict[str, str]]:
     options: list[dict[str, str]] = []
 
     for adapter_key, adapter in sorted(
-        (get_auth_adapters() or {}).items(),
+        (auth_adapters_get_all() or {}).items(),
         key=lambda item: str(item[1].get(AUTH_ADAPTER_ATTR_TITLE, item[0])).casefold(),
     ):
         options.append(

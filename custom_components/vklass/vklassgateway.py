@@ -1,49 +1,61 @@
 from abc import ABC, abstractmethod
+import calendar
 from datetime import date, datetime
 import inspect
 from logging import getLogger
 from typing import AsyncIterator
 from bs4 import BeautifulSoup
 from http.cookies import Morsel
-from zoneinfo import ZoneInfo
 from yarl import URL
-import importlib
-import pkgutil
 import json
 import asyncio
 import aiohttp
 from contextlib import asynccontextmanager, suppress
 
+from .gateway_helpers import (
+    vklass_date_to_timestring,
+    calendar_parse_events,
+    MANUAL_COOKIE_ADAPTER,
+    auth_adapter_get,
+)
+
 from .const import (
+    
     VKLASS_URL_BASE,
+    
     VKLASS_CONFKEY_KEEPALIVE_MIN,
     VKLASS_CONFKEY_AUTHADAPTER,
     VKLASS_CREDKEY_PERSONNO,
     VKLASS_CREDKEY_USERNAME,
     VKLASS_CREDKEY_PASSWORD,
     VKLASS_CREDKEY_COOKIE,
+    
     VKLASS_HANDLER_ON_AUTH_EVENT,
     VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE,
     VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
+    
     AUTH_STATUS_INPROGRESS,
     AUTH_STATUS_SUCCESS,
     AUTH_STATUS_FAIL,
+    
     AUTH_METHOD_BANKID_QR,
     AUTH_METHOD_BANKID_PERSONNO,
     AUTH_METHOD_USERPASS,
     AUTH_METHOD_MANUAL_COOKIE,
+    
     AUTH_COOKIE_NAME,
-    AUTH_ADAPTER_ATTR_NAME,
-    AUTH_ADAPTER_ATTR_TITLE,
+
     AUTH_ADAPTER_ATTR_METHOD,
     AUTH_ADAPTER_ATTR_AUTH_FUNCTION,
+    
     VKLASS_CONTEXT_USER,
     VKLASS_CONTEXT_SCHOOL,
     VKLASS_CONTEXT_STUDENTS,
+
 )
 
-
 log = getLogger(__name__)
+
 
 """
 config = {
@@ -71,7 +83,6 @@ _EP_VKLASS_CUSTODIAN = "custodian"
 _EP_VKLASS_STUDENTS = "students"
 _EP_VKLASS_CLASSLIST = "classlist"
 _EP_VKLASS_CALENDAR = "calendar"
-_SWEDEN_TZ = ZoneInfo("Europe/Stockholm")
 
 
 _ENDPOINTS = {
@@ -92,72 +103,12 @@ _ENDPOINTS = {
     },
 }
 
-
 def _get_ep_url(endpoint: str):
     ep = _ENDPOINTS[endpoint]
     if ep[_EPKEY_URL].startswith("/"):
         return VKLASS_URL_BASE + ep[_EPKEY_URL]
     return ep[_EPKEY_URL]
 
-
-log = getLogger(__name__)
-
-
-_ADAPTER_ATTR_ADAPTERS = "AUTH_ADAPTERS"
-
-
-def load_auth_adapters() -> dict | None:
-
-    adapters = {}
-    package_name = f"{__package__}.auth_adapters"
-    package = importlib.import_module(package_name)
-
-    for _, module_name, _ in pkgutil.iter_modules(package.__path__):
-        module = importlib.import_module(f"{package_name}.{module_name}")
-
-        mAdapters = getattr(module, _ADAPTER_ATTR_ADAPTERS, None)
-        if not mAdapters or not isinstance(mAdapters, dict):
-            log.error(f"Auth adapter {module_name}, does not define the {_ADAPTER_ATTR_ADAPTERS} dict")
-            continue
-
-        for adapterName, adapter in mAdapters.items():
-            name = f"{module_name}.{adapterName}"
-
-            if not (strFunction := adapter.get(AUTH_ADAPTER_ATTR_AUTH_FUNCTION, None)) or not isinstance(strFunction, str):
-                log.error(f"Auth adapter {name}, must define AUTH_ADAPTER_TITLE as str")
-                continue
-            if AUTH_ADAPTER_ATTR_TITLE not in adapter:
-                log.error(f"Auth adapter {name}, must define AUTH_ADAPTER_ATTR_TITLE")
-                continue
-            if AUTH_ADAPTER_ATTR_METHOD not in adapter:
-                log.error(f"Auth adapter {name}, must define AUTH_ADAPTER_ATTR_METHOD")
-                continue
-            if not (authFn := getattr(module, strFunction, None)):
-                log.error(f"Auth adapter {name}, could not find {strFunction} function ")
-                continue
-
-            adapter[AUTH_ADAPTER_ATTR_AUTH_FUNCTION] = authFn
-            adapter[AUTH_ADAPTER_ATTR_NAME] = name
-
-            adapters[f"{module_name}.{adapterName}"] = adapter
-
-    return adapters
-
-
-_AUTH_ADAPTERS = load_auth_adapters()
-_MANUAL_COOKIE_ADAPTER = "manual_cookie.manual_cookie"
-
-
-def get_auth_adapters() -> dict | None:
-    return _AUTH_ADAPTERS
-
-
-def get_auth_adapter(key: str):
-
-    if not (adapter := _AUTH_ADAPTERS.get(key, None)):
-        raise RuntimeError(f"Auth adapter {key} is not loaded")
-
-    return adapter
 
 
 class VklassBase(ABC):
@@ -258,7 +209,7 @@ class VklassBase(ABC):
         else:
             log.info(dump)
 
-    async def _dumpoToFile(self, data, fileName=None):
+    async def _dumpoToFile(self, data: str, fileName=None):
 
         ext = "html"
         if isinstance(data, (dict, list)):
@@ -274,24 +225,15 @@ class VklassBase(ABC):
             f.write(data)
 
 
-    def _date_to_vklass_timestring(self, value: date | str) -> str:
-
-        if isinstance(value, str):
-            value = date.fromisoformat(value)
-        elif not isinstance(value, date):
-            raise TypeError(f"calendar date value must be date or iso date string, not {type(value)}")
-
-        return datetime(value.year, value.month, value.day, tzinfo=_SWEDEN_TZ).isoformat(timespec="seconds")
-
-
 class VklassSession(VklassBase):
+
     def __init__(self, config):
         super().__init__()
         self._config: dict = config
         self._context = {}
         self._credentials: dict | None = None
         self._keepAliveTask = None
-        self._auth_adapter = get_auth_adapter(config.get(VKLASS_CONFKEY_AUTHADAPTER))
+        self._auth_adapter = auth_adapter_get(config.get(VKLASS_CONFKEY_AUTHADAPTER))
         self._authFails = 0
 
     # call for graceful unload
@@ -371,7 +313,7 @@ class VklassSession(VklassBase):
     async def resumeLoggedInSession(self, authCookieValue: str) -> bool:
         log.info("Attempting to resume session with persisted cookie value")
         # set the cookie using the manual cookie adapter
-        manual_adapter = get_auth_adapter(_MANUAL_COOKIE_ADAPTER)
+        manual_adapter = auth_adapter_get(MANUAL_COOKIE_ADAPTER)
         self._aiohttp_session.cookie_jar.clear()
         await manual_adapter[AUTH_ADAPTER_ATTR_AUTH_FUNCTION](self._aiohttp_session, None, {VKLASS_CREDKEY_COOKIE: authCookieValue})
         try:
@@ -665,19 +607,62 @@ class VklassGateway(VklassSession):
 
         return requested_names
 
-    async def getCalendar(self, dateBegin:date, dateEnd:date, studentIds: list | None = None):
+    async def getCalendar(self, year:int, month:int, studentIds: list | None = None) -> list[dict]:
+        
+        """
+        the timespan for the returned data seem to be less than 2 months maximum. So we can fetch only one month
+        at the time, thus the year, month design
+
+        returns:
+
+        [
+            {
+                "context": <str | None>,
+                "event_type": <int | None>,    # raw event type from vklass
+                "name": <str>,                 # "<context> - <event type label>" or "Vklass Helgdagar"
+                "events": [
+                    {
+                        "uid": <str>,              # stable id derived from detailUrl
+                        "detail_url": <str>,       # original detailUrl
+                        "start": <str>,            # ISO date for all-day, ISO datetime for timed
+                        "end": <str>,              # exclusive end, same type as start
+                        "summary": <str>,          # title
+                        "description": <str | None>,
+                        "location": <str | None>,
+                        "cancelled": <bool>,
+                    },
+                    ...
+                ],
+            },
+        ...
+        ]
+        
+        """
 
         if not studentIds:
             studentIds = self.getStudentIds()
 
         students = ",".join(str(student_id) for student_id in studentIds)
         if not students:
-            return []
+            raise RuntimeError("Invalid context, login first.")
+
+        dateBegin = date(year, month, 1)
+        if month == 12:
+            dateEnd = date(year + 1, 1, 1)
+        else:
+            dateEnd = date(year, month + 1, 1)
+
+        log.info (f"Calendar request: {vklass_date_to_timestring(dateBegin)}"
+                  f" to {vklass_date_to_timestring(dateEnd)}")
 
         data = {
             "students": students,
-            "start": self._date_to_vklass_timestring(dateBegin),
-            "end": self._date_to_vklass_timestring(dateEnd),
+            "start": vklass_date_to_timestring(dateBegin),
+            "end": vklass_date_to_timestring(dateEnd),
         }
 
-        return await self._fetch(_EP_VKLASS_CALENDAR, data)
+        raw_calendar = await self._fetch(_EP_VKLASS_CALENDAR, data)
+        if not isinstance(raw_calendar, list):
+            raise RuntimeError(f"Unexpected calendar payload type: {type(raw_calendar)}")
+
+        return calendar_parse_events(raw_calendar)

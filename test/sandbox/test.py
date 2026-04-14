@@ -50,6 +50,9 @@ async def loadCookieFromFile():
     with open(COOKIE_FILE, "r") as f:
         return f.read().strip()
 
+def formatObject(data) -> str:
+    return json.dumps(data, indent=4, ensure_ascii=False)
+
 
 """
 config = {
@@ -100,10 +103,13 @@ async def main():
         if not await gw.resumeLoggedInSession(authCookieValue=cookie):
             await gw.login(credentials={VKLASS_CREDKEY_COOKIE: cookie})
 
+        year = 2026
+        month = 9
 
-        calStartDate = date.today().replace(day=1)
-        calEndDate = date.today() + timedelta(weeks=8)
-        calendar = await gw.getCalendar(calStartDate, calEndDate)
+        calendar = await gw.getCalendar(year=year, month=month)
+
+        print(f"Calendar events for {year}.{month}")
+#        print(formatObject(calendar))
 
         if keepalive:
             while True:

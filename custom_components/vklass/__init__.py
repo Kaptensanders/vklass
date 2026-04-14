@@ -66,7 +66,7 @@ from .vklassgateway import VklassGateway
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
 FRONTEND_URL_BASE = "/vklass"
 FRONTEND_MODULE_PATH = f"{FRONTEND_URL_BASE}/vklass-auth-card.js"
 FRONTEND_MODULE_URL = f"{FRONTEND_MODULE_PATH}?v={VERSION}"
@@ -448,6 +448,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if not unload_ok:
         return False
+
+    if runtime_data and (calendar_runtime := runtime_data.get("calendar_runtime")):
+        await calendar_runtime.async_unload()
 
     if runtime_data and (gateway := runtime_data.get(DATA_GATEWAY)):
         await gateway.shutdown()

@@ -77,4 +77,16 @@ CAL_ATTR_END        = "end"             # date for allDay=true, dateTime for all
 CAL_ATTR_SUMMARY    = "summary"         # title from json
 CAL_ATTR_DESCR      = "description"     # text from json, normalized
 CAL_ATTR_LOCATION   = "location"        # location from json
+CAL_ATTR_CANCELLED  = "cancelled"       # raw cancelled state from vklass event
 
+
+CAL_ATTR_NAME       = "name"            # bucket context from <context>.<eventType name> or "Vklass Lovdagar"
+CAL_ATTR_CONTEXT    = "context"         # bucket context from json
+CAL_ATTR_EVENTTYPE  = "event_type"      # bucket name derived from eventType and context
+CAL_ATTR_EVENTS     = "events"          # bucket name derived from eventType and context
+CAL_ATTR_DETAILURL  = "detail_url"      # the detailUrl from vklass event, used to correlate events to buckets and for calendar event uid
+
+
+CALENDAR_EVENT_PUBLIC_HOLIDAY = "Vklass Helgdagar"
+CALENDAR_CANCELLED_SUMMARY_PREFIX = "Inställd: "
+CALENDAR_CANCELLED_DESCRIPTION_PREFIX = "Inställd"

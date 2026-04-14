@@ -154,6 +154,81 @@ If Vklass or district-specific behavior later forces a fallback strategy, it sho
 * Background entity updates must never trigger interactive authentication
 * Expected unauthenticated states should be handled quietly by skipping update/fetch without noisy error logging. When an exception is logged, it should represent a real unexpected failure worth investigation
 
+### Calendar entity model
+* Raw Vklass calendar fetch data must be normalized and grouped inside the gateway before exposure to the Home Assistant calendar layer. The Home Assistant calendar layer must not pass through raw Vklass event objects unchanged
+* The integration creates multiple Home Assistant calendar entities from discovered Vklass calendar buckets
+* Calendar bucket discovery is dynamic from fetched Vklass events
+* A normal calendar bucket is defined by the pair `(context, eventType)` from the fetched Vklass event
+* The shared `Vklass Helgdagar` bucket is an exception to the normal `(context, eventType)` rule and collects all fetched events where `context = null`, regardless of `eventType`
+* Calendar entities are created only for buckets that actually exist in fetched data
+* Dynamic discovery must not cause entity churn on every poll. New calendar entities may be added when a new bucket is discovered, but existing entities should remain registered even if a later fetch temporarily has no events for that bucket
+
+### Calendar entity naming
+* The Home Assistant friendly name for a discovered bucket is `<context> - <event type label>` when `context` is present
+* `<event type label>` is mapped from the raw Vklass `eventType` through `CALENDAR_EVENTTYPES` in `custom_components/vklass/const.py`
+* Any fetched event with `context = null` belongs to the shared calendar bucket `Vklass Helgdagar`, regardless of `eventType`
+* `context = null` events must not be duplicated into student calendars
+
+### Calendar event normalization
+* The standalone gateway remains Home Assistant independent, but the public calendar data consumed by the Home Assistant layer must be normalized and grouped rather than raw Vklass transport payload
+* `VklassGateway.getCalendar(...)` is the public grouped calendar API consumed by the Home Assistant layer
+* `VklassGateway.getCalendar(...)` is month-scoped and accepts `year` and `month` rather than an arbitrary begin/end range
+* This month-scoped gateway API is required because the observed Vklass calendar endpoint does not reliably return data far beyond the requested start date even when a wider end date is supplied
+* `VklassGateway.getCalendar(...)` returns a list of grouped calendar buckets
+* Each bucket contains:
+  * `context`
+  * `event_type`
+  * `name`
+  * `events`
+* `name` is the display label for that bucket and follows the calendar naming rules above
+* `event_type` preserves the raw Vklass `eventType` for completeness and debugging
+* For the shared `Vklass Helgdagar` bucket, `event_type` is informational metadata only and must not be treated as part of that bucket's identity or grouping rule
+* Each normalized event in `events` contains:
+  * `uid`
+  * `detail_url`
+  * `start`
+  * `end`
+  * `summary`
+  * `description`
+  * `location`
+  * `cancelled`
+* Normalized calendar events should preserve a persistent source identity tied to the original Vklass event so later refreshes can match changed and removed events reliably
+* The normalized event identity should be derived from the original `detailUrl`
+* `detail_url` preserves the original Vklass event reference, while `uid` is the stable normalized identity derived from it
+* `description` must be normalized from the raw Vklass `text` field
+* `description` must be plain text only
+* `description` must preserve semantic line breaks as `\n`
+* Raw `\r\n` and `\r` line endings must normalize to `\n`
+* HTML formatting from the raw Vklass `text` must not be exposed in normalized events. HTML line-break or block structure may be converted into plain-text line breaks before tags are removed
+* Calendar normalization should be tolerant of malformed individual source entries. A single malformed event should be skipped with a visible warning rather than failing the entire calendar fetch
+* All-day events must follow Home Assistant calendar semantics, using `date` values with an exclusive end date
+* A one-day all-day event must normalize to `start=<date>` and `end=<date + 1 day>`
+* A multi-day all-day event must normalize to an exclusive end date, meaning the normalized end date is one day after the final inclusive Vklass day
+* `cancelled` must preserve the raw Vklass cancelled state as a boolean in the normalized event model
+
+### Calendar fetch model
+* The Home Assistant calendar layer owns aggregation of multiple month-scoped gateway fetches into its runtime calendar state
+* On initial load, and then once per day, the Home Assistant calendar layer fetches month-scoped calendar data for the current month and the next 11 calendar months
+* The daily long-range refresh is scheduled for around 03:00 local time
+* The purpose of the daily long-range fetch is to discover and refresh holidays, public holidays, and major school vacation periods that Vklass appears to publish well in advance
+* The Home Assistant calendar layer should also perform an hourly near-term refresh for the current month and the next month
+* The purpose of the hourly near-term refresh is to keep lesson and study schedule changes current for the near future, where Vklass data changes more frequently
+* The Home Assistant calendar layer should merge the long-range and near-term fetch results by normalized event `uid`
+* A successful fetch is authoritative for the exact time window it covered
+* Later refreshes replace existing events with the same `uid`, add newly discovered `uid` values, and remove stale events that are no longer returned for the covered fetch window
+* If a previously known event disappears from a successful fetch for a covered window, it must be removed from runtime state for that window
+* This same removal rule applies regardless of why the event disappeared, including normal deletions and previously cancelled events that are no longer returned by Vklass
+* If a source-side change causes the event identity to change and therefore produces a new `uid`, the old `uid` is removed and the new `uid` is added
+* The Home Assistant calendar layer keeps this merged calendar state only in runtime memory for the config entry. No extra event persistence layer is used
+* Calendar fetches must respect the Home Assistant runtime auth policy. `calendar.py` must not call `VklassGateway.getCalendar(...)` when runtime policy says fetching is currently not allowed
+* Successful authentication should trigger calendar discovery and refresh so calendar entities appear automatically after login
+
+### Cancelled event presentation
+* Home Assistant calendar events do not have a dedicated cancelled field in the standard event model, so the Home Assistant layer must derive presentation from the normalized `cancelled` boolean
+* Cancelled events should remain present in the calendar rather than being dropped
+* In the Home Assistant calendar presentation, a cancelled event should be clearly visible to the user through its event text, for example by prefixing the summary with `Inställd:`
+* The Home Assistant layer may also add a short cancelled note to the plain-text description when useful, but must keep the event readable in the standard Home Assistant calendar UI
+
 ## Lovelave companion card for vklass authentication
 * card in custom_components/vklass/frontend/vklass-auth-card.js
 * auto registered and injected as a frontend resource at integration init
