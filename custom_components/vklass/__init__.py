@@ -341,10 +341,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     runtime_data[DATA_AUTH_STATUS] = AUTH_STATUS_FAIL
 
     async def async_on_auth_cookie_update(auth_cookie: str | None) -> None:
-        await gateway._dumpoToFile(
-            auth_cookie or "",
-            "/workspaces/vklass/test/data/cookie.txt",
-        )
+#        await gateway._dumpoToFile(
+#            auth_cookie or "",
+#            "/workspaces/vklass/test/data/cookie.txt",
+#        )
 
         auth_state = get_auth_state(runtime_data)
         runtime_data[DATA_AUTH_STATE] = next_auth_state_with_cookie(
