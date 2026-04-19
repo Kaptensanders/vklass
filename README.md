@@ -1,6 +1,10 @@
 ![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=)
 ![Version](https://img.shields.io/github/v/release/Kaptensanders/vklass)
-# VKLASS integration for Home Assistant
+
+<br>
+<img src="custom_components/vklass/brand/logo.png" width="50" alt="Calendar view"> 
+
+# Vklass integration for Home Assistant 
 
 Vklass custom component for Home Assistant integrated with the Vklass platform used in Swedish schools.
 Intended for guardian login. Features/entities are kept under a configured Vklass device. 
@@ -66,7 +70,9 @@ Example with Götborg UBF, login with BankID QR:
 * `Göteborg Stad GSF - Vårdnadshavare` *(untested but seems same as UBF)*
 * `Vklass inloggning med användarnamn/lösenord` *(untested, implementation is a rip from [this post](https://community.home-assistant.io/t/vklass-scrape-sensor/939402) by @fatuuse*
 
-<br><span style="color:orange; font-weight:bold">Contribution needed!</span><br>
+<br>
+
+![Contribution Needed](https://img.shields.io/badge/status-contribution_needed-orange)<br>
 Since I cannot test methods other than what my school allows, I cannot develop/verify other methods.<br>
 [Writing an auth adapter](#writing-an-auth-adapter) is pretty straight forward. Please support if you can!
 
@@ -84,9 +90,8 @@ visibility:
     state_not: success
 ```
 
-<br><span style="color:red; font-weight:bold">Be aware that checking the "Save credentials" box will save username and passwork in plain text to HA storage</span><br>
-
-
+![Warning](https://img.shields.io/badge/warning-plaintext_credentials-red?style=flat) <br>
+Be aware, checking **Save credentials** stores the username and password in Home Assistant storage in plain text. Since the keep-alive keeps the session running and refreshed, you should rarely need to re-authenticate. So if you are not 100% comfortable with your local network security. Maybe dont check this box.
 
 ## Writing an auth adapter
 
@@ -191,7 +196,7 @@ Use mine:
 
 Enter the container with `./attach`
 Start Home Assistant (http://localhost:8123/) with `ha`
-
+Login credentials `<dev>`/`<dev>`
 
 
 
