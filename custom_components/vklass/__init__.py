@@ -74,6 +74,8 @@ from .vklassgateway import VklassGateway
 
 _LOGGER = logging.getLogger(__name__)
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
 FRONTEND_URL_BASE = "/vklass"
 FRONTEND_MODULE_PATH = f"{FRONTEND_URL_BASE}/vklass-auth-card.js"
