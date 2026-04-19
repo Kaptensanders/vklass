@@ -4,8 +4,9 @@
 
 This integration imports Vklass calendar events into Home Assistant.
 
-## Authentication
 
+
+## Authentication
 Vklass commonly uses one of these authentication modes:
 
 ### Username and password
