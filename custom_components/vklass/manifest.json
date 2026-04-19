@@ -1,10 +1,10 @@
 {
     "domain": "vklass",
     "name": "Vklass",
+    "after_dependencies": ["lovelace"],
     "codeowners": ["@kaptensanders"],
     "config_flow": true,
     "dependencies": ["http"],
-    "after_dependencies": ["lovelace"],
     "documentation": "https://github.com/Kaptensanders/vklass",
     "integration_type": "service",
     "iot_class": "cloud_polling",
