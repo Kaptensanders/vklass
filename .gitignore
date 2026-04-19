@@ -12,3 +12,4 @@ test/sandbox/cookie.txt
 !.vscode_cache/readme.md
 test/data/*
 !test/data/.gitkeep
+.ruff_cache/

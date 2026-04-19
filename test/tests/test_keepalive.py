@@ -1,101 +1,113 @@
 import asyncio
+from contextlib import suppress
+
+import pytest
 
 from test.tests.helpers import bootstrap  # noqa: F401
-from custom_components.vklass.vklassgateway import (
-    VklassSession,
-    VKLASS_CONFKEY_ASYNC_COOKIE_CB,
-    VKLASS_CONFKEY_COOKIEFILE,
-    VKLASS_CONFKEY_COOKIEFILE_TYPE,
-    VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD,
-    VKLASS_CONFKEY_KEEPALIVE_MIN,
-    VKLASS_CONFKEY_PASSWORD,
-    VKLASS_CONFKEY_USERNAME,
-    VKLASS_COOKIE_RETRIVAL_METHOD_MANUAL,
-)
+
+pytest.importorskip("aiohttp")
+pytest.importorskip("bs4")
+pytest.importorskip("homeassistant")
+pytest.importorskip("voluptuous")
+pytest.importorskip("yarl")
+
+from custom_components.vklass.const import VKLASS_CONFKEY_AUTHADAPTER, VKLASS_CONFKEY_KEEPALIVE_MIN
+from custom_components.vklass.gateway_helpers import MANUAL_COOKIE_ADAPTER
+from custom_components.vklass.vklassgateway import VklassSession
 
 
 def _config(keepalive_minutes: int = 1) -> dict:
     return {
-        VKLASS_CONFKEY_COOKIE_RETRIVAL_METHOD: VKLASS_COOKIE_RETRIVAL_METHOD_MANUAL,
-        VKLASS_CONFKEY_ASYNC_COOKIE_CB: None,
-        VKLASS_CONFKEY_USERNAME: None,
-        VKLASS_CONFKEY_PASSWORD: None,
-        VKLASS_CONFKEY_COOKIEFILE: None,
-        VKLASS_CONFKEY_COOKIEFILE_TYPE: None,
+        VKLASS_CONFKEY_AUTHADAPTER: MANUAL_COOKIE_ADAPTER,
         VKLASS_CONFKEY_KEEPALIVE_MIN: keepalive_minutes,
     }
 
 
 def test_keepalive_start_is_idempotent_and_stoppable(monkeypatch):
     async def run():
-        session = VklassSession(asyncio.to_thread, object(), _config(keepalive_minutes=0))
-        calls = 0
-        got_two_calls = asyncio.Event()
+        session = VklassSession(_config(keepalive_minutes=7))
+        started = asyncio.Event()
+        keepalive_args: list[int] = []
 
-        async def fake_keepalive():
-            nonlocal calls
-            calls += 1
-            if calls >= 2:
-                got_two_calls.set()
+        async def fake_keepalive(loop_len: int) -> None:
+            keepalive_args.append(loop_len)
+            started.set()
+            await asyncio.Event().wait()
 
-        monkeypatch.setattr(session, "_keepAlive", fake_keepalive)
+        monkeypatch.setattr(session, "_keepAliveLoop", fake_keepalive)
 
-        session.startKeepAlive()
-        first_task = session._keepAliveTask
-        session.startKeepAlive()
+        try:
+            session._startKeepAlive()
+            first_task = session._keepAliveTask
+            session._startKeepAlive()
 
-        assert session._keepAliveTask is first_task
+            assert session._keepAliveTask is first_task
+            await asyncio.wait_for(started.wait(), timeout=1)
+            assert keepalive_args == [7]
 
-        await asyncio.wait_for(got_two_calls.wait(), timeout=1)
-        await session.stopKeepAlive()
-
-        assert session._keepAliveTask is None
-        assert calls >= 2
+            await session._stopKeepAlive()
+            assert session._keepAliveTask is None
+        finally:
+            await session.shutdown()
 
     asyncio.run(run())
 
 
 def test_keepalive_loop_recovers_after_error(monkeypatch):
     async def run():
-        session = VklassSession(asyncio.to_thread, object(), _config(keepalive_minutes=0))
+        session = VklassSession(_config(keepalive_minutes=0))
         calls = 0
         completed_recovery = asyncio.Event()
 
-        async def fake_keepalive():
+        async def fake_fetch(ep_key: str, data=None, forceAuthenticate: bool = False):
             nonlocal calls
             calls += 1
             if calls == 1:
                 raise ConnectionError("transient")
+
             completed_recovery.set()
+            await asyncio.Event().wait()
 
-        monkeypatch.setattr(session, "_keepAlive", fake_keepalive)
+        monkeypatch.setattr(session, "_fetch", fake_fetch)
 
-        session.startKeepAlive()
-        await asyncio.wait_for(completed_recovery.wait(), timeout=1)
-        await session.stopKeepAlive()
-
-        assert calls >= 2
+        task = asyncio.create_task(session._keepAliveLoop(0))
+        try:
+            await asyncio.wait_for(completed_recovery.wait(), timeout=1)
+            assert calls >= 2
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+            await session.shutdown()
 
     asyncio.run(run())
 
 
-def test_keepalive_uses_home_with_redirects_disabled(monkeypatch):
+def test_keepalive_uses_custodian_endpoint(monkeypatch):
     async def run():
-        session = VklassSession(asyncio.to_thread, object(), _config())
-        captured = {}
+        session = VklassSession(_config(keepalive_minutes=0))
+        captured: dict[str, object] = {}
+        got_call = asyncio.Event()
 
-        async def fake_fetch_text(uri, data, debugName=None, expected_result_code=200, allow_redirects=True):
-            captured["uri"] = uri
+        async def fake_fetch(ep_key: str, data=None, forceAuthenticate: bool = False):
+            captured["ep_key"] = ep_key
             captured["data"] = data
-            captured["allow_redirects"] = allow_redirects
-            return "<html></html>"
+            captured["force_authenticate"] = forceAuthenticate
+            got_call.set()
+            await asyncio.Event().wait()
 
-        monkeypatch.setattr(session, "fetch_text", fake_fetch_text)
+        monkeypatch.setattr(session, "_fetch", fake_fetch)
 
-        await session._keepAlive()
-
-        assert captured["uri"] == "https://custodian.vklass.se/Home/Welcome"
-        assert captured["data"] is None
-        assert captured["allow_redirects"] is False
+        task = asyncio.create_task(session._keepAliveLoop(0))
+        try:
+            await asyncio.wait_for(got_call.wait(), timeout=1)
+            assert captured["ep_key"] == "custodian"
+            assert captured["data"] is None
+            assert captured["force_authenticate"] is False
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+            await session.shutdown()
 
     asyncio.run(run())

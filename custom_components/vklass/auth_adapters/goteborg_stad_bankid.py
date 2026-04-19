@@ -15,7 +15,8 @@ from ..const import (
     AUTH_ADAPTER_ATTR_TITLE,
     AUTH_ADAPTER_ATTR_METHOD,
     AUTH_METHOD_BANKID_QR,
-    AUTH_ADAPTER_ATTR_AUTH_FUNCTION
+    AUTH_ADAPTER_ATTR_AUTH_FUNCTION,
+    QR_CODE_TYPE_SEED
 )
 
 AUTH_ADAPTERS = {
@@ -320,8 +321,6 @@ async def _bankid1_poll_qr(session, authData, asyncQrNotifyHandler):
             log.error (f"{err} - BankID status status={status}, hintCode={hint_code}, message={message}, substatus={substatus}")
             raise ValueError(err)
 
-        # TODO, handle other status
-
         # get QR
         async with session.get(
             "https://eid-connect.funktionstjanster.se/id/bankid/qr",
@@ -346,7 +345,7 @@ async def _bankid1_poll_qr(session, authData, asyncQrNotifyHandler):
             continue
 
         try:
-            await asyncQrNotifyHandler(qr_text)
+            await asyncQrNotifyHandler(qr_text, QR_CODE_TYPE_SEED)
         except Exception:
             log.exception(f"BankID QR code notify callback failed for QR code={qr_text}")
             raise

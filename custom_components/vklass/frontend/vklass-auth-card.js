@@ -2,6 +2,7 @@ const AUTH_METHOD_BANKID_QR = "bankid_qr";
 const AUTH_METHOD_BANKID_PERSONNO = "bankid_personno";
 const AUTH_METHOD_USERPASS = "userpass";
 const AUTH_METHOD_MANUAL_COOKIE = "manual_cookie";
+const AUTH_METHOD_CUSTOM = "custom";
 const AUTH_STATUS_INPROGRESS = "inprogress";
 const AUTH_STATUS_SUCCESS = "success";
 const AUTH_STATUS_FAIL = "fail";
@@ -13,7 +14,9 @@ const SUPPORTED_AUTH_METHODS = new Set([
   AUTH_METHOD_BANKID_PERSONNO,
   AUTH_METHOD_USERPASS,
   AUTH_METHOD_MANUAL_COOKIE,
+  AUTH_METHOD_CUSTOM,
 ]);
+const BLOCKED_SHORTCUT_KEYS = new Set(["/"]);
 const TRANSLATIONS = {
   en: {
     logged_in: "Logged in to Vklass",
@@ -23,7 +26,7 @@ const TRANSLATIONS = {
     login_to_vklass: "Log in to Vklass",
     username: "Username",
     password: "Password",
-    personno: "Personal number",
+    personno: "Personal identification number",
     cookie: "se.vklass.authentication cookie:",
     save_credentials: "Save credentials",
     cookie_instructions:
@@ -172,11 +175,11 @@ class VklassAuthCard extends HTMLElement {
 
     this._syncFormFromState(stateObj, forceSync);
 
-    const qrCode =
+    const currentQr =
       nextState === AUTH_STATUS_INPROGRESS
-        ? String(stateObj?.attributes?.qr_code ?? "").trim()
+        ? String(stateObj?.attributes?.current_qr ?? "").trim()
         : "";
-    this._syncQrImage(qrCode);
+    this._syncQrImage(currentQr);
 
     this._render(stateObj);
     this._lastState = nextState;
@@ -242,14 +245,17 @@ class VklassAuthCard extends HTMLElement {
         const { field } = event.target.dataset;
         this._formValues[field] = event.target.value;
         this._dirtyFields.add(field);
-        this._render(this._hass.states[this._config.entity]);
+        this._syncAuthenticateButtonState();
       });
+      input.addEventListener("keydown", this._handleFieldKeyboardEvent);
+      input.addEventListener("keyup", this._stopShortcutPropagation);
+      input.addEventListener("keypress", this._handleFieldKeyboardEvent);
     });
 
     this.shadowRoot.querySelector("[data-field='save_credentials']")?.addEventListener("change", (event) => {
       this._formValues.save_credentials = event.target.checked;
       this._dirtyFields.add("save_credentials");
-      this._render(this._hass.states[this._config.entity]);
+      this._syncAuthenticateButtonState();
     });
   }
 
@@ -377,7 +383,7 @@ class VklassAuthCard extends HTMLElement {
         }
         .qr-shell img {
           display: block;
-          width: min(100%, 320px);
+          width: min(100%, 200px);
           height: auto;
         }
         ha-alert {
@@ -390,6 +396,43 @@ class VklassAuthCard extends HTMLElement {
         }
       </style>
     `;
+  }
+
+  _stopShortcutPropagation(event) {
+    event.stopPropagation();
+  }
+
+  _handleFieldKeyboardEvent(event) {
+    if (BLOCKED_SHORTCUT_KEYS.has(event.key)) {
+      event.stopPropagation();
+      return;
+    }
+
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      String(event.key || "").trim().toLowerCase() === "k"
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    event.stopPropagation();
+  }
+
+  _syncAuthenticateButtonState() {
+    if (!this.shadowRoot || !this._hass) {
+      return;
+    }
+
+    const stateObj = this._hass.states[this._config.entity];
+    const authMethod = stateObj?.attributes?.auth_method;
+    const button = this.shadowRoot.querySelector("[data-action='authenticate']");
+    if (!button) {
+      return;
+    }
+
+    button.disabled = this._isCredentialButtonDisabled(authMethod);
   }
 
   _renderErrorCard(error) {
@@ -436,7 +479,8 @@ class VklassAuthCard extends HTMLElement {
       authMethod !== AUTH_METHOD_BANKID_QR &&
       authMethod !== AUTH_METHOD_BANKID_PERSONNO &&
       authMethod !== AUTH_METHOD_USERPASS &&
-      authMethod !== AUTH_METHOD_MANUAL_COOKIE
+      authMethod !== AUTH_METHOD_MANUAL_COOKIE &&
+      authMethod !== AUTH_METHOD_CUSTOM
     ) {
       return [];
     }
@@ -459,6 +503,10 @@ class VklassAuthCard extends HTMLElement {
   _renderBody(stateObj, authMethod, state, message) {
     if (authMethod === AUTH_METHOD_BANKID_QR) {
       return this._renderBankIdQr(state, message);
+    }
+
+    if (authMethod === AUTH_METHOD_CUSTOM) {
+      return this._renderCustomMethod(state, message);
     }
 
     if (this._isCredentialMethod(authMethod)) {
@@ -487,6 +535,29 @@ class VklassAuthCard extends HTMLElement {
       return `
         <div class="status">${escapeHtml(localize(this._hass, "starting_authentication"))}</div>
         <div class="actions">${this._renderSpinner()}</div>
+      `;
+    }
+
+    return `
+      <div class="actions">
+        ${this._renderActionButton("authenticate", localize(this._hass, "login_to_vklass"))}
+      </div>
+      ${state === AUTH_STATUS_FAIL && message ? this._renderError(message) : ""}
+    `;
+  }
+
+  _renderCustomMethod(state, message) {
+    if (state === AUTH_STATUS_SUCCESS) {
+      return `
+        <div class="actions">${this._renderLogoutButton()}</div>
+      `;
+    }
+
+    if (this._pendingAction === "authenticate" || state === AUTH_STATUS_INPROGRESS) {
+      return `
+        <div class="status">${escapeHtml(localize(this._hass, "starting_authentication"))}</div>
+        <div class="actions">${this._renderSpinner()}</div>
+        ${state === AUTH_STATUS_FAIL && message ? this._renderError(message) : ""}
       `;
     }
 
@@ -634,20 +705,20 @@ class VklassAuthCard extends HTMLElement {
     this._qrError = null;
   }
 
-  _syncQrImage(qrCode) {
-    if (!qrCode) {
+  _syncQrImage(currentQr) {
+    if (!currentQr) {
       this._clearQrImage();
       return;
     }
 
-    if (qrCode === this._qrCode && (this._qrLoading || this._qrImageUrl)) {
+    if (currentQr === this._qrCode && (this._qrLoading || this._qrImageUrl)) {
       return;
     }
 
-    this._loadQrImage(qrCode);
+    this._loadQrImage(currentQr);
   }
 
-  async _loadQrImage(qrCode) {
+  async _loadQrImage(currentQr) {
     if (!this._hass?.auth?.data?.access_token) {
       this._qrError = "Home Assistant access token missing";
       this._qrLoading = false;
@@ -655,16 +726,19 @@ class VklassAuthCard extends HTMLElement {
       return;
     }
 
-    this._qrCode = qrCode;
+    this._qrCode = currentQr;
     this._qrLoading = true;
     this._qrError = null;
 
     try {
-      const response = await fetch(`/api/vklass/qr?data=${encodeURIComponent(qrCode)}`, {
-        headers: {
-          Authorization: `Bearer ${this._hass.auth.data.access_token}`,
+      const response = await fetch(
+        `/api/vklass/qr?entity_id=${encodeURIComponent(this._config.entity)}&v=${encodeURIComponent(currentQr)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this._hass.auth.data.access_token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`QR request failed with status ${response.status}`);
@@ -677,7 +751,7 @@ class VklassAuthCard extends HTMLElement {
         URL.revokeObjectURL(this._qrImageUrl);
       }
 
-      if (qrCode !== this._qrCode) {
+      if (currentQr !== this._qrCode) {
         URL.revokeObjectURL(nextUrl);
         return;
       }
@@ -686,7 +760,7 @@ class VklassAuthCard extends HTMLElement {
       this._qrLoading = false;
       this._render(this._hass.states[this._config.entity]);
     } catch (err) {
-      if (qrCode !== this._qrCode) {
+      if (currentQr !== this._qrCode) {
         return;
       }
 

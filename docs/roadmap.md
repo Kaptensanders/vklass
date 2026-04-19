@@ -17,7 +17,7 @@ Status: **Finished**
 * Folder structure and stub files
 
 ### 2. The VklassGateway component - fundamentals
-Status: **Complete**
+Status: **Finished**
 * Basic logic and structure of the gateway component in `custom_components/vklass/vklassgateway.py`
 * Real authentication entry point in `VklassSession`
 * Basic, but good foundation for auth adapter handling
@@ -31,7 +31,7 @@ Status: **Complete**
 * Student discovery and keepalive loop
 
 ### 3. Home Assistant Vklass integration, phase 1
-Status: **Complete**
+Status: **Finished**
 * **Home Assistant integration BASE** design implementation only
 * Some stub code exist as example, design pattern guidance, replace with real implementation 
 * (DONE) Basic robust integration design, shared vklassgateway and the Vklass device
@@ -40,17 +40,15 @@ Status: **Complete**
 * Home Assistant presentation of BankID QR updates during login
 
 ### 4. Lovelace companion card for QR auth
-Status: **Complete**
+Status: **Finished**
 * according do design spec
 
-
 ### 5. Home Assistant Vklass integration, phase 2
-Status: **Current**
+Status: **Finished**
 * Vklass calendar entity, with calendar entities per student and later event-type separation
 
-
 ### 6. The VklassGateway component - completion and refinement
-Status: **Pending**  
+Status: **Finished**  
 * better _step3_poll_qr status handling in goteborg_bankid.py when we can try better with the HA integration
 * consistant and production grade handling of auth adapters. Documented and well designed. 
 * Implement vklass BankID personal-number authentication (vklass_bankid.py)

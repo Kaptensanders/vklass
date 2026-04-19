@@ -125,25 +125,24 @@ If Vklass or district-specific behavior later forces a fallback strategy, it sho
 * Vklass device
 * Config flow selects the auth adapter and other stable settings only. It must not ask for credentials
 * Integration may persist reusable credentials and cookies in Home Assistant storage and restore them on startup by calling `VklassGateway.login(..., reuse_credentials=True)`
-* expose `vklass.authenticate` as service, implemented as a call to `VklassGateway.login(...)`
+* expose `vklass.login` as service, implemented as a call to `VklassGateway.login(...)`
 * expose `vklass.logout` as service, implemented as a call to `VklassGateway.logout()`
 * `vklass.logout` must also clear persisted credentials, persisted auth cookie, and persistence preference for that entry in Home Assistant storage
 * Home Assistant runtime auth state is the authoritative integration state for gating entity updates and auth-related recovery decisions
 * create a sensor.vklass_<name>_auth sensor, reflecting the current auth state.
   * Sensor state in inprogress|success|fail (const.AUTH_STATUS_XX)
-  * Sensor should hold the QR code callback function used in auth adapters. Function shall update qr_code attribute
+  * Sensor should hold the QR code callback function used in auth adapters. Function shall store the current QR payload in runtime data and update a lightweight `current_qr` attribute
   * Sensor shall hold the auth_status callback function used by `VklassGateway.login()` to communicate state and message
   * The auth sensor reflects runtime auth state for UI and debugging only. Other entities must not depend on the auth sensor entity state as their coordination mechanism
   * Attributes:
     * auth_adapter - selected adapter key
     * auth_method - auth method of selected adapter
-    * qr_code - exist only after callback function set's it
+    * current_qr - exist only after callback function sets a new QR revision token
     * message - latest auth status message
     * last_success - last successful authentication
     * username - persisted username if present
     * personno - persisted personal number if present
     * persisted_password - boolean
-    * persisted_cookie - boolean
     * save_credentials - current persistence preference
 
 ## Home Assistant integration EXTENDED
@@ -233,39 +232,38 @@ If Vklass or district-specific behavior later forces a fallback strategy, it sho
 * card in custom_components/vklass/frontend/vklass-auth-card.js
 * auto registered and injected as a frontend resource at integration init
 * card is configured with an auth sensor entity. The entity's `auth_method` attribute decides the behaviour of the card. The entity's `auth_adapter` attribute is available for debugging and future adapter-specific UI use
-* raw `qr_code` sensor data is passed unchanged from the gateway. The integration/card layer is responsible for rendering that raw payload as a visible QR image
-* when auth fields are shown, the card should always show the `save credentials` checkbox
+* QR payloads stay in backend runtime data only. The auth sensor exposes only an opaque `current_qr` change token, and the card refetches the current QR image from the backend when that token changes
+* when auth fields are shown for reusable-credential methods, the card should show the `save credentials` checkbox
 * real persisted secrets must never be exposed to the card through sensor attributes
-* for persisted password or cookie fields, the card uses the sentinel value `__PERSISTED_SECRET__`
-* if the submitted password or cookie field still equals `__PERSISTED_SECRET__`, the backend must replace it with the persisted secret before calling `VklassGateway.login(...)`
+* for persisted password fields, the card uses the sentinel value `__PERSISTED_SECRET__`
+* if the submitted password field still equals `__PERSISTED_SECRET__`, the backend must replace it with the persisted secret before calling `VklassGateway.login(...)`
   
   * auth_method=AUTH_METHOD_BANKID_QR and state=
     * fail - display button with "Logga in i Vklass"
     * success - display text "Vklass logged in", and show a logout button that calls the vklass logout service
     * inprogress - 
       * display text: "Scanna med BankID appen"
-      * render qr code from auth sensor, update image when code renews
+      * render qr code from backend, refetch image when `current_qr` changes on the auth sensor
     * When "Logga in i Vklass" button is pressed the card should render a spinner instead of the button util the state changes to inprogress
 
   * auth_method=AUTH_METHOD_BANKID_PERSONNO and state=fail
     * display personal number input
     * if a personal number is already persisted, prefill that field
     * display `save credentials` checkbox
-    * display login button - calls `vklass.authenticate`
+    * display login button - calls `vklass.login`
 
   * auth_method=AUTH_METHOD_USERPASS and state=fail
     * display username and password fields
     * if a username is already persisted, prefill that field
     * if a password is already persisted, prefill the password field with `__PERSISTED_SECRET__`
     * display `save credentials` checkbox
-    * display login button - calls `vklass.authenticate`
+    * display login button - calls `vklass.login`
 
   * auth_method=AUTH_METHOD_MANUAL_COOKIE and state=fail
     * display text: "Login to Vklass with browser and paste value of se.vklass.authentication cookie here"
     * display cookie input field
-    * if a cookie is already persisted, prefill the field with `__PERSISTED_SECRET__`
-    * display `save credentials` checkbox
-    * display login button - calls `vklass.authenticate`
+    * manual cookie auth does not use persisted secret fields or the `save credentials` checkbox
+    * display login button - calls `vklass.login`
 
   * auth_method in (`AUTH_METHOD_BANKID_PERSONNO`, `AUTH_METHOD_USERPASS`, `AUTH_METHOD_MANUAL_COOKIE`) and state=success
     * display text "Vklass logged in"

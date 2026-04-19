@@ -12,3 +12,9 @@ views:
         cards:
           - type: custom:vklass-auth-card
             entity: sensor.vklass_goteborg_ubf_auth
+
+          - type: custom:vklass-auth-card
+            entity: sensor.vklass_min_skola_auth
+
+          - type: custom:vklass-auth-card
+            entity: sensor.vklass_vklass_userpass_auth

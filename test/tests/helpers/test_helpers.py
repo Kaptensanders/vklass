@@ -1,8 +1,6 @@
-import json, os, sys
-from datetime import date as Date
-from custom_components.vklass.vklassgateway import VklassGateway
-from pathlib import Path
-from typing import Any
+"""Shared pytest helpers for Vklass tests.
 
-
-# helpers here....
+The previous placeholder imports pulled in the integration package during test
+collection even when no helper was used. Keep this module import-safe so test
+discovery does not fail on unrelated dependency issues.
+"""

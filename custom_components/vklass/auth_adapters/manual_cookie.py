@@ -13,7 +13,6 @@
 # }
 #
 
-
 from yarl import URL
 from http.cookies import SimpleCookie
 
@@ -54,3 +53,4 @@ async def authenticate(aiohttp_session, asyncQrNotifyHandler, credentials:dict|N
         response_url=URL(VKLASS_URL_BASE),
     )
     return True
+

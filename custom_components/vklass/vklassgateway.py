@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-import calendar
-from datetime import date, datetime
+from datetime import date
 import inspect
 from logging import getLogger
 from typing import AsyncIterator
@@ -263,6 +262,9 @@ class VklassSession(VklassBase):
 
         return self._context
 
+    def hasLoadedContext(self) -> bool:
+        return bool(self._context)
+
     def getAuthAdapter(self):
         return self._auth_adapter
 
@@ -297,6 +299,7 @@ class VklassSession(VklassBase):
         AUTH_METHOD_BANKID_PERSONNO     credentials:dict = {"personno": <"personal number">}
         AUTH_METHOD_USERPASS            credentials:dict = {"username": <"username">, "password":<"password">}
         AUTH_METHOD_MANUAL_COOKIE       credentials:dict = {"cookie":   <"cookie value">}
+        AUTH_METHOD_CUSTOM:             credentials:None = None
         """
 
         self._credentials = credentials
@@ -362,8 +365,8 @@ class VklassSession(VklassBase):
     async def _authenticate(self, force: bool = False, isInteractive: bool = False) -> bool:
 
         # callback helper auth adaptors that need to propagate qr codes
-        async def _notifyQrCodeUpdate(qrCode: str):
-            await self._notifyHandlers(VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE, qrCode)
+        async def _notifyQrCodeUpdate(qrCode: str, qrType: str):
+            await self._notifyHandlers(VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE, qrCode, qrType)
 
         if not force and self._hasAuthCookie():
             return True
@@ -651,9 +654,6 @@ class VklassGateway(VklassSession):
             dateEnd = date(year + 1, 1, 1)
         else:
             dateEnd = date(year, month + 1, 1)
-
-        log.info (f"Calendar request: {vklass_date_to_timestring(dateBegin)}"
-                  f" to {vklass_date_to_timestring(dateEnd)}")
 
         data = {
             "students": students,

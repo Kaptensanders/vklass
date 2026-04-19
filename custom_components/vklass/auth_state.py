@@ -14,6 +14,7 @@ from .const import (
     AUTH_STATUS_INPROGRESS,
     AUTH_STATUS_SUCCESS,
     AUTH_ADAPTER_ATTR_METHOD,
+    AUTH_METHOD_CUSTOM,
     AUTH_METHOD_BANKID_PERSONNO,
     AUTH_METHOD_BANKID_QR,
     AUTH_METHOD_MANUAL_COOKIE,
@@ -67,13 +68,13 @@ def can_entity_fetch(runtime_data: dict[str, Any], gateway: Any) -> bool:
     if auth_status == AUTH_STATUS_INPROGRESS:
         return False
     if auth_status == AUTH_STATUS_SUCCESS:
+        return bool(gateway.hasLoadedContext())
+
+    if gateway.hasLoadedContext():
         return True
 
     auth_method = get_auth_method(gateway)
     auth_state = get_auth_state(runtime_data)
-
-    if auth_state.get(STORAGE_KEY_AUTH_COOKIE):
-        return True
 
     if not gateway.canAutoLogin():
         return False
@@ -125,7 +126,7 @@ def sanitize_auth_state(
     )
     auth_cookie = normalize_optional_text(auth_state.get(STORAGE_KEY_AUTH_COOKIE))
 
-    if auth_method == AUTH_METHOD_MANUAL_COOKIE:
+    if auth_method in (AUTH_METHOD_MANUAL_COOKIE, AUTH_METHOD_CUSTOM):
         save_credentials = False
         credentials = {}
 
@@ -145,6 +146,8 @@ def credentials_can_seed(
     credentials = dict(credentials or {})
 
     if auth_method == AUTH_METHOD_BANKID_QR:
+        return False
+    if auth_method == AUTH_METHOD_CUSTOM:
         return False
     if auth_method == AUTH_METHOD_BANKID_PERSONNO:
         return bool(credentials.get(VKLASS_CREDKEY_PERSONNO))
@@ -183,6 +186,9 @@ def resolve_login_credentials(
         return normalized
 
     if auth_method == AUTH_METHOD_BANKID_QR:
+        return None
+
+    if auth_method == AUTH_METHOD_CUSTOM:
         return None
 
     if auth_method == AUTH_METHOD_BANKID_PERSONNO:

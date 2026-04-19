@@ -1,5 +1,5 @@
 DOMAIN = "vklass"
-VERSION = "0.30"
+VERSION = "0.43"
 
 HA_ENTITYNAME_AUTH = "Vklass Authentication"
 
@@ -16,7 +16,7 @@ VKLASS_CREDKEY_COOKIE = "cookie"
 # async notification handler function keys
 VKLASS_HANDLER_ON_AUTH_EVENT = "on_auth_event"  # async def mycallback(state:str, message:str)
 VKLASS_HANDLER_ON_AUTHCOOKIE_UPDATE = "on_authcookie_update"  # async def mycallback(cookie_value:str)
-VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE = "on_qrcode_update"  # async def mycallback(qr_code:str)
+VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE = "on_qrcode_update"  # async def mycallback(data:str, qr_type:str)
 
 # config entry / runtime keys
 CONF_SAVE_CREDENTIALS = "save_credentials"  # True/False if method requires personel number, or username/password, but user may not want HA to save it. Manual input in the card instead for each auth, if False
@@ -27,6 +27,9 @@ DATA_AUTH_STATUS = "auth_status"
 DATA_CALLBACKS = "callbacks"
 DATA_SERVICES_REGISTERED = "services_registered"
 DATA_CONFIG_STORE = "config_store"
+DATA_CURRENT_QR = "current_qr"
+DATA_CURRENT_QR_DATA = "current_qr_data"
+DATA_CURRENT_QR_TYPE = "current_qr_type"
 STORAGE_KEY = "vklass"
 STORAGE_VERSION = 1
 
@@ -42,6 +45,11 @@ AUTH_METHOD_BANKID_QR = "bankid_qr"
 AUTH_METHOD_BANKID_PERSONNO = "bankid_personno"
 AUTH_METHOD_USERPASS = "userpass"
 AUTH_METHOD_MANUAL_COOKIE = "manual_cookie"
+AUTH_METHOD_CUSTOM = "custom"
+
+QR_CODE_TYPE_SEED = "_qr_code_seed_"
+QR_CODE_TYPE_IMAGE_PNG = "image/png"
+QR_CODE_TYPE_IMAGE_SVG = "image/svg+xml"
 
 AUTH_ADAPTER_ATTR_NAME = "name"
 AUTH_ADAPTER_ATTR_TITLE = "title"

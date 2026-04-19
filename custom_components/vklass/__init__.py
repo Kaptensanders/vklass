@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Mapping
 from io import BytesIO
 import logging
@@ -41,15 +42,22 @@ from .const import (
     AUTH_STATUS_FAIL,
     AUTH_STATUS_INPROGRESS,
     AUTH_STATUS_SUCCESS,
+    AUTH_METHOD_CUSTOM,
     AUTH_METHOD_MANUAL_COOKIE,
     CONF_SAVE_CREDENTIALS,
     DATA_AUTH_STATE,
     DATA_AUTH_STATUS,
     DATA_CALLBACKS,
+    DATA_CURRENT_QR,
+    DATA_CURRENT_QR_DATA,
+    DATA_CURRENT_QR_TYPE,
     DATA_GATEWAY,
     DATA_SERVICES_REGISTERED,
     DEFAULT_KEEPALIVE_MINUTES,
     DOMAIN,
+    QR_CODE_TYPE_IMAGE_PNG,
+    QR_CODE_TYPE_IMAGE_SVG,
+    QR_CODE_TYPE_SEED,
     SERVICE_LOGIN,
     SERVICE_LOGOUT,
     VKLASS_CREDKEY_COOKIE,
@@ -100,12 +108,41 @@ class VklassQrCodeView(HomeAssistantView):
         self.hass = hass
 
     async def get(self, request: web.Request) -> web.Response:
-        data = request.query.get("data", "").strip()
-        if not data:
-            return web.Response(status=400, text="Missing QR data")
+        entity_id = request.query.get("entity_id", "").strip()
+        if not entity_id:
+            return web.Response(status=400, text="Missing entity_id")
 
-        svg = await self.hass.async_add_executor_job(_render_qr_svg, data)
-        return web.Response(body=svg, content_type="image/svg+xml")
+        try:
+            entry = await _async_resolve_entry_from_entity(self.hass, {ATTR_ENTITY_ID: entity_id})
+        except ValueError as err:
+            return web.Response(status=400, text=str(err))
+
+        runtime_data = _get_entry_data(self.hass, entry.entry_id)
+        current_qr = runtime_data.get(DATA_CURRENT_QR)
+        qr_data = runtime_data.get(DATA_CURRENT_QR_DATA)
+        qr_type = runtime_data.get(DATA_CURRENT_QR_TYPE)
+
+        if not current_qr or not qr_data or not qr_type:
+            return web.Response(status=404, text="No current QR data available")
+
+        if qr_type == QR_CODE_TYPE_SEED:
+            svg = await self.hass.async_add_executor_job(_render_qr_svg, qr_data)
+            return web.Response(body=svg, content_type=QR_CODE_TYPE_IMAGE_SVG)
+
+        if qr_type == QR_CODE_TYPE_IMAGE_PNG:
+            if isinstance(qr_data, bytes):
+                png = qr_data
+            else:
+                try:
+                    png = base64.b64decode(qr_data, validate=True)
+                except ValueError:
+                    return web.Response(status=500, text="Stored PNG QR data is not valid base64")
+            return web.Response(body=png, content_type=QR_CODE_TYPE_IMAGE_PNG)
+
+        if qr_type == QR_CODE_TYPE_IMAGE_SVG:
+            return web.Response(text=qr_data, content_type=QR_CODE_TYPE_IMAGE_SVG)
+
+        return web.Response(status=500, text=f"Unsupported QR type: {qr_type}")
 
 
 def _get_entry_data(hass: HomeAssistant, entry_id: str) -> dict[str, Any]:
@@ -197,7 +234,7 @@ async def _async_handle_login(hass: HomeAssistant, call: ServiceCall) -> None:
     auth_state = get_auth_state(runtime_data)
 
     save_credentials = bool(call.data.get(CONF_SAVE_CREDENTIALS, auth_state.get(CONF_SAVE_CREDENTIALS, False)))
-    if auth_method == AUTH_METHOD_MANUAL_COOKIE:
+    if auth_method in (AUTH_METHOD_MANUAL_COOKIE, AUTH_METHOD_CUSTOM):
         save_credentials = False
     persisted_credentials = auth_state.get(STORAGE_KEY_CREDENTIALS, {})
     credentials = resolve_login_credentials(auth_method, call.data, persisted_credentials)
@@ -238,6 +275,9 @@ async def _async_handle_logout(hass: HomeAssistant, call: ServiceCall) -> None:
     await gateway.logout()
     runtime_data[DATA_AUTH_STATE] = sanitize_auth_state(auth_method, None)
     runtime_data[DATA_AUTH_STATUS] = AUTH_STATUS_FAIL
+    runtime_data.pop(DATA_CURRENT_QR, None)
+    runtime_data.pop(DATA_CURRENT_QR_DATA, None)
+    runtime_data.pop(DATA_CURRENT_QR_TYPE, None)
     await save_entry_storage(
         hass,
         entry.entry_id,
@@ -413,7 +453,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         model="Vklass",
     )
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
 
     auth_state = get_auth_state(runtime_data)
     stored_auth_cookie = auth_state.get(STORAGE_KEY_AUTH_COOKIE)
@@ -439,6 +479,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 entry.entry_id,
                 err,
             )
+
+    await hass.config_entries.async_forward_entry_setups(entry, [Platform.CALENDAR])
 
     return True
 

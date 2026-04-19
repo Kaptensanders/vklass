@@ -1,18 +1,17 @@
-import sys, os, json, aiohttp, asyncio, logging
-from datetime import date, timedelta
+import asyncio
+import json
+import logging
+import os
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, ROOT)
 
-from test.tests.helpers import bootstrap  # noqa: F401
+from test.tests.helpers import bootstrap  # noqa: E402, F401
 
 from custom_components.vklass.vklassgateway import (  # noqa: E402
     VklassGateway,
-    VKLASS_CREDKEY_PERSONNO,
-    VKLASS_CREDKEY_USERNAME,
-    VKLASS_CREDKEY_PASSWORD,
     VKLASS_CREDKEY_COOKIE,
-
     VKLASS_CONFKEY_KEEPALIVE_MIN,
     VKLASS_HANDLER_ON_AUTH_EVENT,
     VKLASS_HANDLER_ON_AUTH_QRCODE_UPDATE,
@@ -39,8 +38,8 @@ async def onCookieUpdate(cookie):
     print("onCookieUpdate callback, new cookie saved to file")
 
 
-async def onQrUpdate(qrCode: str):
-    print(f"QR code update: {qrCode}")
+async def onQrUpdate(qrCode: str, qrType: str):
+    print(f"QR code update: type={qrType}, data={qrCode}")
 
 
 async def loadCookieFromFile():
@@ -106,7 +105,7 @@ async def main():
         year = 2026
         month = 9
 
-        calendar = await gw.getCalendar(year=year, month=month)
+        await gw.getCalendar(year=year, month=month)
 
         print(f"Calendar events for {year}.{month}")
 #        print(formatObject(calendar))

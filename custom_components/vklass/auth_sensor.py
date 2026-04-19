@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
@@ -18,11 +19,13 @@ from .const import (
     AUTH_ADAPTER_ATTR_TITLE,
     AUTH_METHOD_USERPASS,
     AUTH_STATUS_FAIL,
-    AUTH_STATUS_INPROGRESS,
     AUTH_STATUS_SUCCESS,
     CONF_SAVE_CREDENTIALS,
     DATA_AUTH_STATE,
     DATA_CALLBACKS,
+    DATA_CURRENT_QR,
+    DATA_CURRENT_QR_DATA,
+    DATA_CURRENT_QR_TYPE,
     DATA_GATEWAY,
     DOMAIN,
     HA_ENTITYNAME_AUTH,
@@ -65,7 +68,6 @@ class VklassAuthSensor(SensorEntity):
         self._name = entry.title or self._config.get(VKLASS_CONFKEY_NAME, "Vklass")
         self._state = AUTH_STATUS_FAIL
         self._message: str | None = None
-        self._qr_code: str | None = None
         self._last_success: str | None = None
         self._handlers_registered = False
         self._runtime_callback_registered = False
@@ -109,8 +111,8 @@ class VklassAuthSensor(SensorEntity):
             attributes["username"] = username
         if personno := credentials.get(VKLASS_CREDKEY_PERSONNO):
             attributes["personno"] = personno
-        if self._qr_code is not None:
-            attributes["qr_code"] = self._qr_code
+        if current_qr := self._runtime_data.get(DATA_CURRENT_QR):
+            attributes["current_qr"] = current_qr
         if self._message is not None:
             attributes["message"] = self._message
         if self._last_success is not None:
@@ -158,16 +160,23 @@ class VklassAuthSensor(SensorEntity):
         self._state = state
         self._message = message
 
-        if state == AUTH_STATUS_INPROGRESS:
-            self._qr_code = None
+        self._clear_current_qr()
         if state == AUTH_STATUS_SUCCESS:
             self._last_success = dt_util.utcnow().isoformat()
 
         self.async_write_ha_state()
 
-    async def _async_on_qr_code_update(self, qr_code: str) -> None:
-        self._qr_code = qr_code
+    async def _async_on_qr_code_update(self, data: str, qr_type: str) -> None:
+        current_qr = uuid.uuid4().hex
+        self._runtime_data[DATA_CURRENT_QR_DATA] = data
+        self._runtime_data[DATA_CURRENT_QR_TYPE] = qr_type
+        self._runtime_data[DATA_CURRENT_QR] = current_qr
         self.async_write_ha_state()
 
     async def _async_on_runtime_update(self) -> None:
         self.async_write_ha_state()
+
+    def _clear_current_qr(self) -> None:
+        self._runtime_data.pop(DATA_CURRENT_QR, None)
+        self._runtime_data.pop(DATA_CURRENT_QR_DATA, None)
+        self._runtime_data.pop(DATA_CURRENT_QR_TYPE, None)

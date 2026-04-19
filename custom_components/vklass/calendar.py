@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import slugify
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.event import async_track_point_in_time, async_track_time_interval
@@ -129,6 +130,7 @@ class VklassCalendarRuntime:
         self._buckets: dict[str, BucketState] = {}
         self._entities: dict[str, VklassCalendarEntity] = {}
         self._refresh_lock = False
+        self._last_fetch_allowed: bool | None = None
         self._scheduled_unsubs: list[CALLBACK_TYPE] = []
         self._daily_refresh_unsub: CALLBACK_TYPE | None = None
         self._remove_runtime_callback: Callable[[], None] | None = None
@@ -138,6 +140,7 @@ class VklassCalendarRuntime:
         callbacks = get_callbacks(runtime_data)
         callbacks.append(self._async_on_runtime_changed)
         self._remove_runtime_callback = lambda: callbacks.remove(self._async_on_runtime_changed)
+        self._last_fetch_allowed = can_entry_fetch(self.hass, self.entry.entry_id)
 
         self._schedule_daily_refresh()
         self._scheduled_unsubs.append(
@@ -186,6 +189,13 @@ class VklassCalendarRuntime:
         await self.async_refresh()
 
     async def _async_on_runtime_changed(self) -> None:
+        can_fetch = can_entry_fetch(self.hass, self.entry.entry_id)
+        previous = self._last_fetch_allowed
+        self._last_fetch_allowed = can_fetch
+
+        if not can_fetch or previous is True:
+            return
+
         await self.async_refresh(long_range=True, force_discovery=True)
 
     async def async_refresh(
@@ -193,7 +203,9 @@ class VklassCalendarRuntime:
     ) -> None:
         if self._refresh_lock:
             return
-        if not can_entry_fetch(self.hass, self.entry.entry_id):
+        can_fetch = can_entry_fetch(self.hass, self.entry.entry_id)
+        self._last_fetch_allowed = can_fetch
+        if not can_fetch:
             return
 
         self._refresh_lock = True
@@ -206,6 +218,12 @@ class VklassCalendarRuntime:
             )
             fetched_snapshots: dict[tuple[int, int], list[dict[str, Any]]] = {}
             for year, month in months:
+                _LOGGER.info(
+                    "%s requesting calendar data for %04d-%02d",
+                    self.entry.title,
+                    year,
+                    month,
+                )
                 buckets = await self.gateway.getCalendar(year=year, month=month)
                 fetched_snapshots[_month_key(year, month)] = buckets
 
@@ -220,12 +238,38 @@ class VklassCalendarRuntime:
                 entity.async_write_ha_state()
         except Exception as err:
             _LOGGER.warning(
-                "Failed to refresh Vklass calendar entry %s: %s",
-                self.entry.entry_id,
+                "Failed to refresh Vklass calendar for device %s (%s): %s",
+                self.entry.title,
+                self._calendar_log_targets(),
                 err,
             )
         finally:
             self._refresh_lock = False
+
+    def _calendar_log_targets(self) -> str:
+        entity_ids = self._registered_calendar_entity_ids()
+        if entity_ids:
+            return f"calendar entities: {', '.join(entity_ids)}"
+
+        if self._entities:
+            bucket_names = ", ".join(sorted(self._entities))
+            return f"calendar buckets: {bucket_names}"
+
+        return "no calendar entities discovered yet"
+
+    def _registered_calendar_entity_ids(self) -> list[str]:
+        try:
+            entity_registry = er.async_get(self.hass)
+        except Exception:
+            return []
+
+        return sorted(
+            entity_entry.entity_id
+            for entity_entry in er.async_entries_for_config_entry(
+                entity_registry, self.entry.entry_id
+            )
+            if entity_entry.entity_id.startswith("calendar.")
+        )
 
     def _rebuild_buckets(self) -> None:
         merged: dict[str, dict[str, dict[str, Any]]] = {}
