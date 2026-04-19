@@ -27,10 +27,14 @@ Use HACS or clone manually
 
 * Calendar integration
   * Replicates the Vklass calendar design for all students in the account.
-  * Creates calendar entities on the form calendar.<student>_<event type>, just like the structure in Vklass.
-    * "Lektioner" - the course sc
+  * Creates calendar entities on the form `calendar.<student>_<event type>`, just like the structure in Vklass. Calendars are dynamically created from event types found in Vklass calendar data for each student.
+    * "Lektioner" - the lesson schedule
+    * "Uppgifter" - assignments, typically homework
+    * "Händelser" - other things
+    * "Lediga dagar" - vacation, public holidays etc
+    * "Planering" - not really sure what this is
+    * "Praktik" - Work Placement / Internship, etc
   * 12 month data fetched once per day, 2 month data fetched hourly.
-  * Calendars are dynamically created from event types from Vklass data
 
 ## Vklass Authentication
 
